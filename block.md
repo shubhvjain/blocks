@@ -1,7 +1,7 @@
 # the block program 
 version 1.0.0
 
-A `documemnt` is a collection of  linear blocks.
+A `document` is a collection of  linear blocks.
 Linear means that the blocks are processed in the same order as they were written in the document. 
 Blocks are seperated by a new line i.e. a new block ends with a blank line.
 A Block can have metadata like ID.
@@ -90,7 +90,7 @@ In this version of the program, the goal is simple
 The goal may seem simple but it involves interation between a lot of complex components. 
 
 ## The overview of the algorithm
-1. Convert to doument to blocks
+1. Convert the document to blocks
 2. Initialize the DocumentObject
 3. First pass through the blocks
 4. Dependency analysis
