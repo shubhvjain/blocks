@@ -8,3 +8,11 @@ Another aim is to support [literate programming](https://en.wikipedia.org/wiki/L
 A page (the input the the program) consists  of blocks, the basic processing unit.
 Each block is separated by a new line. This means a block can be a single sentence,a paragraph, a list, a heading, code etc. 
 Metadata related to a block is defined within the annotation delimiter (which can be configured). 
+
+
+## note on the folder structure 
+there  is a single level folder hierarchy i.e no sub folders. all the code including related code remains in the same folder. There are, however, 4  folders in the root folder of the project.
+- `source` : the source code and other stuff realted to the version currently under development stays here . this folder is used during developement.
+- `test` : this contains code to test the program. this may have an internal working copy of the program
+- `release` : this is where the main code of the program lies. code of the lastest relase version is in this folder. the whole folder is released as a whole.
+- `scripts`: utility scripts to do many things like releasing a new version of the program, updating program dependencies etc ...
