@@ -302,15 +302,30 @@ const generateDocObject = (doc,options={})=>{
     let obj = processBlocks(blocks)
     let docObject = obj.d
     let blockDepGraph = obj.g
-    let view = [blockDepGraph]
+    //let view = [blockDepGraph]
     let order =  generateProcessingOrder(blockDepGraph)
     docObject = processBlocksInOrder(docObject,order.vertexInOrder)
-    print(docObject)
-    view.push(order.dfsTree)
-    view.push(order.tsTree)
-    graph.generateGraphPreview(view,{format:'html',outputPath:"sample.html"})
+    //print(docObject)
+    //view.push(order.dfsTree)
+    //view.push(order.tsTree)
+    //graph.generateGraphPreview(view,{format:'html',outputPath:"sample.html"})
+    return {docObject, blockDepGraph, ...order }
   }catch(error){console.log(error)}
 } 
+```
+
+### Generating the code file 
+
+This part is now straight forward. The user has to specify which block is the starting point of the code file. Once the document is processed and all blocks have the final block value, simply take the text of the required block and save it as a file. 
+
+This is the only way to generate a file in this version of the program. More advanced ways to follow in later versions. 
+
+```js
+const generateDocument =  (doc,options={})=>{
+  if(!options.main){throw new Error("Specify the main block Id which contains the code")}
+  const Document = generateDocObject(doc,options) 
+  return Document['docObject']['data'][options.main]['text']
+}
 ```
 
 ```js
@@ -322,6 +337,7 @@ module.exports = {
   annotations,
   generateProcessingOrder,
   processBlocksInOrder,
-  generateDocObject
+  generateDocObject,
+  generateDocument
 }
 ```
