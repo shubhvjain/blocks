@@ -228,6 +228,5 @@ more in part 1
 
 `
 
-
-b.generateDocObject(t4)
+console.log(b.generateDocument(t4,{main: "main"}))
 

@@ -159,15 +159,23 @@ const generateDocObject = (doc,options={})=>{
     let obj = processBlocks(blocks)
     let docObject = obj.d
     let blockDepGraph = obj.g
-    let view = [blockDepGraph]
+    //let view = [blockDepGraph]
     let order =  generateProcessingOrder(blockDepGraph)
     docObject = processBlocksInOrder(docObject,order.vertexInOrder)
-    print(docObject)
-    view.push(order.dfsTree)
-    view.push(order.tsTree)
-    graph.generateGraphPreview(view,{format:'html',outputPath:"sample.html"})
+    //print(docObject)
+    //view.push(order.dfsTree)
+    //view.push(order.tsTree)
+    //graph.generateGraphPreview(view,{format:'html',outputPath:"sample.html"})
+    return {docObject, blockDepGraph, ...order }
   }catch(error){console.log(error)}
 } 
+
+
+const generateDocument =  (doc,options={})=>{
+  if(!options.main){throw new Error("Specify the main block Id which contains the code")}
+  const Document = generateDocObject(doc,options) 
+  return Document['docObject']['data'][options.main]['text']
+}
 
 
 module.exports = {
@@ -178,5 +186,6 @@ module.exports = {
   annotations,
   generateProcessingOrder,
   processBlocksInOrder,
-  generateDocObject
+  generateDocObject,
+  generateDocument
 }
