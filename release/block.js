@@ -1,28 +1,22 @@
 /*** 
-The Block program. Version 0.1.0 . 
+the Block program. Version 0.1.1 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
-
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
-
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
-
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/> 
-
 ***/
 
 const docToBlocks = (doc,splitter)=>{
   return doc.split(splitter)
 }
-
-
 const getBlankDocObj = ()=>{
   let newObj = {
     blocks:[],
@@ -30,8 +24,6 @@ const getBlankDocObj = ()=>{
   }
   return {... newObj}
 }
-
-
 const graph = require('./graph')
 const getBlankDepGraph = ()=>{
   let newG = graph.createGraph({
@@ -42,17 +34,12 @@ const getBlankDepGraph = ()=>{
   })
   return {...newG}
 }
-
-
-
 const randomInteger = (min=0,max=100) => {
     return Math.floor(Math.random() * (max - min + 1) + min)
  }
-
 const print = (obj,indent=1)=>{
   console.log(JSON.stringify(obj,null,indent))
 } 
-
 const hashBlockId = (text)=>{
   let txt = text.trim()
   let isAppend = false
@@ -64,7 +51,6 @@ const hashBlockId = (text)=>{
   txt = txt.toLowerCase()
   return { isAppend: isAppend, id: txt }
 }
-
 const annotations = {
   declaration: {
     extract:(text)=>{
@@ -104,7 +90,6 @@ const annotations = {
     }
   }
 }
-
 const processBlocks = (blocks) => {
   let d = getBlankDocObj()
   let g = getBlankDepGraph()
@@ -136,7 +121,6 @@ const processBlocks = (blocks) => {
         if(!d.data[newBlock.id]['annotations']['a']['valid']){
           d.data[newBlock.id]['annotations']['a']['valid'] = []
         }
-
         allAsmts.map(itm=>{
           if(itm.id != newBlock.id){
             d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
@@ -148,14 +132,10 @@ const processBlocks = (blocks) => {
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
   return {d,g}
 }
-
-
 const generateProcessingOrder = (blockDep)=>{
   const tsort = graph.TopologicalSort(blockDep)
   return tsort
 }
-
-
 const processBlocksInOrder = (docObj, vertexOrder) => {
   vertexOrder.map(v=>{
     let validAnn = docObj['data'][v.vertexId]['annotations']['a']['valid']
@@ -170,8 +150,6 @@ const processBlocksInOrder = (docObj, vertexOrder) => {
   })
   return docObj
 }
-
-
 const generateDocObject = (doc,options={})=>{
   try{
     const blocks = docToBlocks(doc,"\n\n")
@@ -188,15 +166,11 @@ const generateDocObject = (doc,options={})=>{
     return {docObject, blockDepGraph, ...order }
   }catch(error){console.log(error)}
 } 
-
-
 const generateDocument =  (doc,options={})=>{
   if(!options.main){throw new Error("Specify the main block Id which contains the code")}
   const Document = generateDocObject(doc,options) 
   return Document['docObject']['data'][options.main]['text']
 }
-
-
 module.exports = {
   docToBlocks,
   getBlankDocObj,
