@@ -10,9 +10,17 @@ Each block is separated by a new line. This means a block can be a single senten
 Metadata related to a block is defined within the annotation delimiter. 
 
 
-## note on the folder structure 
+# Dev notes
+
+## folder structure 
 there  is a single level folder hierarchy i.e no sub folders. all the code including related code remains in the same folder. There are, however, 4  folders in the root folder of the project.
-- `source` : the source code and other stuff realted to the version currently under development stays here . this folder is used during developement.
+- `source` : the source code and other stuff related to the version currently under development stays here . this folder is used during developement.
 - `test` : this contains code to test the program. this may have an internal working copy of the program
 - `release` : this is where the main code of the program lies. code of the lastest relase version is in this folder. the whole folder is released as a whole.
-- `scripts`: utility scripts to do many things like releasing a new version of the program, updating program dependencies etc ...
+- `scripts`: utility scripts to do many things like releasing a new version of the program, updating program dependencies etc...
+
+## to release a new version 
+
+run this command from the base directory of the project : `node ./script/release.js versionType`
+
+(valid version types : `major` , `minor` , `patch`)
