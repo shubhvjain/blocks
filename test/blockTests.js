@@ -228,5 +228,64 @@ more in part 1
 
 `
 
-console.log(b.generateDocument(t4,{main: "main"}))
+let t5 = `.[program version] v0.1.2
 
+.[Page Start]
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Block  >[program version] </title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body>
+  >[Page Navigation]
+
+
+.[Page End]
+  </body>
+</html>
+
+.[Page Navigation]
+<div class="container py-3">
+  <header>
+    <div class="d-flex flex-column flex-md-row align-items-center pb-3 mb-4 border-bottom">
+      <a href="https://github.com/shubhvjain/blocks" class="d-flex align-items-center text-dark text-decoration-none">
+        <span class="fs-4">Blocks >[program version] </span>
+      </a>
+      <nav class="d-inline-flex mt-2 mt-md-0 ms-md-auto">
+        <a class="me-3 py-2 text-dark text-decoration-none" href="index.html">Home</a>
+        <a class="me-3 py-2 text-dark text-decoration-none" href="docs.html">Docs</a>
+      </nav>
+    </div>
+  </header>
+</div>
+
+
+.[Index page]
+ >[Page start]
+ >[Introduction]
+ >[Page end]
+
+
+.[Docs page]
+ >[Page start]
+ >[Introduction]
+ >[Page end]
+
+.[Introduction]
+Hello. Testing if it works.
+`
+
+
+
+// console.log(b.generateDocument(t5,{main: "index-page"}))
+let d = b.generateDocObject(t5)
+
+
+console.log(JSON.stringify(d.docObject,null,1))
+
+const g = require("./graph")
+
+g.generateGraphPreview([d.blockDepGraph,d.dfsTree,d.tsTree],{format:"html",outputPath:"sample4.html"})

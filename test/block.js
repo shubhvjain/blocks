@@ -139,13 +139,19 @@ const generateProcessingOrder = (blockDep)=>{
 
 const processBlocksInOrder = (docObj, vertexOrder) => {
   vertexOrder.map(v=>{
+    console.log("processing -",v)
     let validAnn = docObj['data'][v.vertexId]['annotations']['a']['valid']
+    console.log(validAnn)
     if(validAnn.length > 0){
       let mainText = docObj['data'][v.vertexId]['text']
       validAnn.map(annBlock=>{
+        //console.log(annBlock)
+        //console.log(mainText)
         let annText = docObj['data'][annBlock.blockId]['text']
-        mainText = mainText.replaceAll(`>[${annBlock.blockId}]`,annText)
+        console.log(annText)
+        mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
       }) 
+      
       docObj['data'][v.vertexId]['text'] = mainText
     }
   })
