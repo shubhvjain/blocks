@@ -128,7 +128,7 @@ const processBlocksInOrder = (docObj, vertexOrder) => {
       let mainText = docObj['data'][v.vertexId]['text']
       validAnn.map(annBlock=>{
         let annText = docObj['data'][annBlock.blockId]['text']
-        mainText = mainText.replaceAll(`>[${annBlock.blockId}]`,annText)
+        mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
       }) 
       docObj['data'][v.vertexId]['text'] = mainText
     }
