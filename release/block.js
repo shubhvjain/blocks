@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.1.1 . 
+the Block program. Version 0.1.2 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -143,7 +143,7 @@ const processBlocksInOrder = (docObj, vertexOrder) => {
       let mainText = docObj['data'][v.vertexId]['text']
       validAnn.map(annBlock=>{
         let annText = docObj['data'][annBlock.blockId]['text']
-        mainText = mainText.replaceAll(`>[${annBlock.blockId}]`,annText)
+        mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
       }) 
       docObj['data'][v.vertexId]['text'] = mainText
     }
