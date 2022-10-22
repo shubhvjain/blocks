@@ -1,0 +1,26 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Block Markup",
+	"patterns": [
+		{
+			"include": "#annotations"
+		}
+	],
+	"repository": {
+		"annotations":{
+			"patterns": [
+				{"include":"#declerationAnn"},
+				{"include":"#assignmentAnn"}
+			]
+		},
+		"declerationAnn": {
+      "match": "^(\\.\\[([\\+]?)([\\w\\s\\-]+?)])",
+      "name": "keyword.letter"
+    },
+		"assignmentAnn": {
+      "match": "\\>\\[([\\w\\s\\-]+?)\\]",
+      "name": "keyword.letter"
+    }
+	},
+	"scopeName": "source.block"
+}

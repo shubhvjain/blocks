@@ -1,0 +1,25 @@
+{
+  "name": "txt",
+  "displayName": "TXT",
+  "description": "Block markup language",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.72.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "block",
+      "aliases": ["Block Markup", "block"],
+      "extensions": [".txt"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "block",
+      "scopeName": "source.block",
+      "path": "./syntaxes/block.tmLanguage.json"
+    }]
+  }
+}
