@@ -1,30 +1,88 @@
+This program takes in annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 3 objects : 
+- the "processedBlock" object which  contains the final values of all  the blocks 
+- "blockDepGraph :  a directed acyclic graph which shows the relationships among the blocks 
+- "processingOrder" :  topological order in which the blocks must be processed to ensure that for all blocks, their dependencies are processed before it
+
+Here is the main program that does that : 
+
+.[Main]
+  >[Imports]
+  >[Global Declerations]
+  >[Utility Functions]
+  >[Annotation Declerations]
+  >[Generate document object]
+  >[Generate output document]
+
+What will this "Main" program generate ?
+A Javascript module that returns 2 main functionalities : "generateDocObject" and "generateOutputDoc".
+However, I still need to test all other methods. So I will create 2 different files for the program : one is the actual program file that exports just the 2 main functions. Another file where all the functionalities are exported to thorughly test all parts of the program.
+
+Here's the main program file :
+
 .[Main Program]
-const docToBlocks = (doc,splitter)=>{
-  return doc.split(splitter)
-}
-const getBlankDocObj = ()=>{
-  let newObj = {
-    blocks:[],
-    data:{},
-  }
-  return {... newObj}
-}
+  >[Main]
+  module.exports = { generateDocObject, generateOutputDoc }
+ 
+And here's the test program file:
+
+.[Program for testing]
+  >[Main]
+  module.exports = { docToBlocks, getBlankDocObj, getBlankDepGraph, hashBlockId, annotations, generateProcessingOrder, processBlocksInOrder, generateDocObject, generateOutputDoc }
+
+Moving on to the parts of the program :
+
+The program depends on the Graph library I created as a seperate project. See github.com/shubhvjain/graphs. I am assuming the lastest version of the graph program is available with the name "graph.js" in the same folder which is imported here:
+
+.[Imports]
 const graph = require('./graph')
+
+We require several utility functions.
+
+.[Doc conventions]
+- whenever i declare a block for a standalone method, i use the following naming conventions for that block : Method to <function description> . (e.g. Method to split doc)
+
+.[Utility functions]
+  >[Method to split doc into blocks]
+  >[Method to generate random integer]  
+  >[method to print an object]
+  >[method to generate blank block processing object]
+  >[method to generate blank block dependency graph]
+  >[method to hash block name]
+
+Blocks are the smallest units of processing. So we must extract all blocks from a document. 
+This method takes in a doc and a splitter and returns an array of blocks by splitting the doc string using the provided splitter.
+By convention, blocks are seperated by a new line. 
+So let's create a new global decleration for that
+
+.[+Doc conventions]
+- global decleration/variables names are in camel case and begins with upper case
+
+.[global declerations]
+const BlockSplitCharacter = "\n"
+
+.[Method to split Doc into blocks]
+const docToBlocks = (doc,splitter)=>{ return doc.split(splitter)}
+
+.[Method to generate random integer]
+const randomInteger = (min=0,max=100) => { return Math.floor(Math.random() * (max - min + 1) + min)}
+
+This method is useful to assign random names to blocks which are not named in the document.  
+
+.[method to print an object]
+const print = (obj,indent=1)=>{console.log(JSON.stringify(obj,null,indent))} 
+
+this utility function prints out an object. for debugging purpose
+
+.[method to generate blank block processing object]
+const getBlankDocObj = ()=>{ return { blocks:[], data:{}}}
+
+.[method to generate blank block dependency graph]
 const getBlankDepGraph = ()=>{
-  let newG = graph.createGraph({
-    title:"Block Dependency graph",
-    hasLoops: false,
-    hasDirectedEdges: true, 
-    isSimple: true,
-  })
+  let newG = graph.createGraph({ title:"Block Dependency graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true  })
   return {...newG}
 }
-const randomInteger = (min=0,max=100) => {
-    return Math.floor(Math.random() * (max - min + 1) + min)
- }
-const print = (obj,indent=1)=>{
-  console.log(JSON.stringify(obj,null,indent))
-} 
+
+.[method to hash block name]
 const hashBlockId = (text)=>{
   let txt = text.trim()
   let isAppend = false
@@ -36,6 +94,34 @@ const hashBlockId = (text)=>{
   txt = txt.toLowerCase()
   return { isAppend: isAppend, id: txt }
 }
+
+The above can be understood more easily with some examples:
+- hash("block name") = "block-name"
+- hash("Block Name") = "block-name"
+- hash("BLOCK name") = "block-name"
+- hash("  BLOCK   name   ") = "block-name"
+(all the above produces the same output)
+- hash("+block name") = "block-name"
+
+
+Now, the most important part of the programs. The annotation declerations. 
+
+What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations makes the document more strucuted and provides a way to extract "knowledge" from the document which can be further processed.  
+
+There are 3 types of annotations :
+- decleration : this will be used to declare blocks or give names to blocks
+- assignment : this will be used to include the content of one blocks in another block (or to declare a block dependency)
+- action : to declare metadata and actions. these annotations are processed within a "context" which is determined by the locations of where it is used
+
+Each annotation type has a different delimiter within which they are "defined" in a document
+
+For each type of annotation, we need to specify a few things :
+- how to extract annotations from the block text ?
+- how generate a replacement text for a certain annotation ? (after an annotation is successfully processed, it can either be removed from the processed block text or replaced with some text or left unchanged)
+
+Decleration annotation : 
+
+.[Annotation declerations]
 const annotations = {
   declaration: {
     extract:(text)=>{
@@ -65,16 +151,31 @@ const annotations = {
         parts.map(part=>{
           let t = part.replaceAll(">[","")
           t = t.replaceAll("]","")
-          asmts.push({
-            rawSource: part,
-            blockId: hashBlockId(t)['id']
-          })
+          asmts.push({ rawSource: part, blockId: hashBlockId(t)['id']})
         })
       }
       return asmts
     }
   }
 }
+
+.[Generate document object]
+  >[Method for First pass]
+  >[Method for Second pass] 
+  >[Generate block processing order]
+  const generateDocObject = (doc,options={})=>{
+    try{
+      const blocks = docToBlocks(doc,"\n\n")
+      let obj = processBlocks(blocks)
+      let docObject = obj.d
+      let blockDepGraph = obj.g
+      let order =  generateProcessingOrder(blockDepGraph)
+      docObject = processBlocksInOrder(docObject,order.vertexInOrder)
+      return {docObject, blockDepGraph, ...order }
+    }catch(error){console.log(error)}
+  } 
+
+.[Method for First pass]
 const processBlocks = (blocks) => {
   let d = getBlankDocObj()
   let g = getBlankDepGraph()
@@ -88,14 +189,10 @@ const processBlocks = (blocks) => {
           let data = {
             rawText: [{block,index}],
             text:processedText,
-            annotations: {
-              d:{index, ...newBlock},
-              a:{}
-            }
+            annotations: { d:{index, ...newBlock}, a:{}}
           }
           d.data[newBlock.id] = data
           g = graph.addVertex(g,{id:newBlock.id})
-          
         }else{
           if(newBlock.isAppend){
             d.data[newBlock.id]['text'] += " \n "+processedText
@@ -117,10 +214,8 @@ const processBlocks = (blocks) => {
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
   return {d,g}
 }
-const generateProcessingOrder = (blockDep)=>{
-  const tsort = graph.TopologicalSort(blockDep)
-  return tsort
-}
+
+.[Method for Second pass]
 const processBlocksInOrder = (docObj, vertexOrder) => {
   vertexOrder.map(v=>{
     let validAnn = docObj['data'][v.vertexId]['annotations']['a']['valid']
@@ -135,36 +230,13 @@ const processBlocksInOrder = (docObj, vertexOrder) => {
   })
   return docObj
 }
-const generateDocObject = (doc,options={})=>{
-  try{
-    const blocks = docToBlocks(doc,"\n\n")
-    let obj = processBlocks(blocks)
-    let docObject = obj.d
-    let blockDepGraph = obj.g
-    //let view = [blockDepGraph]
-    let order =  generateProcessingOrder(blockDepGraph)
-    docObject = processBlocksInOrder(docObject,order.vertexInOrder)
-    //print(docObject)
-    //view.push(order.dfsTree)
-    //view.push(order.tsTree)
-    //graph.generateGraphPreview(view,{format:'html',outputPath:"sample.html"})
-    return {docObject, blockDepGraph, ...order }
-  }catch(error){console.log(error)}
-} 
+
+.[Generate Block processing order]
+const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
+
+.[Generate output document]
 const generateDocument =  (doc,options={})=>{
   if(!options.main){throw new Error("Specify the main block Id which contains the code")}
   const Document = generateDocObject(doc,options) 
   return Document['docObject']['data'][options.main]['text']
 }
-module.exports = {
-  docToBlocks,
-  getBlankDocObj,
-  getBlankDepGraph,
-  hashBlockId,
-  annotations,
-  generateProcessingOrder,
-  processBlocksInOrder,
-  generateDocObject,
-  generateDocument
-}
-
