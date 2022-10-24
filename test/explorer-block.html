@@ -1,100 +1,412 @@
-<!DOCTYPE html><html lang="en">
-        <head> <meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Document Explorer</title>
-         <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-         </head>
-        <body>
-        <style>.graph {width: 90%; height: 80vh; border: 1px solid #80808036;}</style>
+<!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>Document Explorer</title>
+              <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+               <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+            </head>
+            <body>
+              <style>.graph { width: 90%; height: 80vh; border: 1px solid #80808036; }</style>
+              <div class="container-lg">
+                <div class="row">
+                  <div class="col-lg-12">
+                    <h3>Document explorer</h3>
+                    <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
+                      <li class="nav-item" role="presentation"> <button class="nav-link active" id="pills-source-tab" data-bs-toggle="pill" data-bs-target="#pills-source" type="button" role="tab" aria-controls="pills-source" aria-selected="true">Source</button></li>
+                      <li class="nav-item" role="presentation"><button class="nav-link" id="pills-graph-tab" data-bs-toggle="pill" data-bs-target="#pills-graph" type="button" role="tab" aria-controls="pills-graph" aria-selected="false">Graphs</button></li>
+                      <li class="nav-item" role="presentation"><button class="nav-link" id="pills-action-tab" data-bs-toggle="pill" data-bs-target="#pills-action" type="button" role="tab" aria-controls="pills-action" aria-selected="false">Actions</button></li>
+                    </ul>
+                    <div class="tab-content" id="pills-tabContent">
+                      <div class="tab-pane fade show active" id="pills-source" role="tabpanel" aria-labelledby="pills-source-tab" tabindex="0">
+                        <pre>This program takes in annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 4 objects : 
+- the "processedBlock" object which  contains the final values of all  the blocks 
+- "blockDepGraph :  a directed acyclic graph which shows the relationships among the blocks 
+- "processingOrder" :  topological order in which the blocks must be processed to ensure that for all blocks, their dependencies are processed before it
+- "knowledgeGraph" : user defined graph, generated automatically
+
+Here is the main program that does that : 
+
+.[Main]
+  &gt;[Imports]
+  &gt;[Global Declerations]
+  &gt;[Utility Functions]
+  &gt;[Annotation Declerations]
+  &gt;[Generate document object]
+  &gt;[Generate output document]
+
+What will this "Main" program generate ?
+A Javascript module that returns 2 main functionalities : "generateDocObject" and "generateOutputDoc".
+However, I still need to test all other methods. So I will create 2 different files for the program : one is the actual program file that exports just the 2 main functions. Another file where all the functionalities are exported to thorughly test all parts of the program.
+
+Here's the main program file :
+
+.[Main Program]
+  &gt;[Main]
+  module.exports = { generateDocObject, generateOutputDoc }
+
+
+And here's the test program file:
+
+.[Program for testing]
+  &gt;[Main]
+  module.exports = { docToBlocks, getBlankDocObj, getBlankDepGraph, hashBlockId, annotations, generateProcessingOrder, processBlocksInOrder, generateDocObject, generateOutputDoc }
+
+Moving on to the parts of the program :
+
+The program depends on the Graph library I created as a seperate project. See github.com/shubhvjain/graphs. I am assuming the lastest version of the graph program is available with the name "graph.js" in the same folder which is imported here:
+
+.[Imports]
+const graph = require('./graph')
+
+We require several utility functions.
+
+.[Doc conventions]
+- whenever i declare a block for a standalone method, i use the following naming conventions for that block : Method to &lt;function description&gt; . (e.g. Method to split doc)
+
+.[Utility functions]
+  &gt;[Method to split doc into blocks]
+  &gt;[Method to generate random integer]  
+  &gt;[method to print an object]
+  &gt;[method to generate blank block processing object]
+  &gt;[method to generate blank block dependency graph]
+  &gt;[method to hash block name]
+
+Blocks are the smallest units of processing. So we must extract all blocks from a document. 
+This method takes in a doc and a splitter and returns an array of blocks by splitting the doc string using the provided splitter.
+By convention, blocks are seperated by a new line. 
+So let's create a new global decleration for that
+
+.[+Doc conventions]
+- global decleration/variables names are in camel case and begins with upper case
+
+.[global declerations]
+const BlockSplitCharacter = "\n"
+
+.[Method to split Doc into blocks]
+const docToBlocks = (doc,splitter)=&gt;{ return doc.split(splitter)}
+
+.[Method to generate random integer]
+const randomInteger = (min=0,max=100) =&gt; { return Math.floor(Math.random() * (max - min + 1) + min)}
+
+This method is useful to assign random names to blocks which are not named in the document.  
+
+.[method to print an object]
+const print = (obj,indent=1)=&gt;{console.log(JSON.stringify(obj,null,indent))} 
+
+this utility function prints out an object. for debugging purpose
+
+.[method to generate blank block processing object]
+const getBlankDocObj = ()=&gt;{ return { blocks:[], data:{}}}
+
+.[method to generate blank block dependency graph]
+const getBlankDepGraph = ()=&gt;{
+  let newG = graph.createGraph({ title:"Block Dependency graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
+  return {...newG}
+}
+
+.[method to hash block name]
+const hashBlockId = (text)=&gt;{
+  let txt = text.trim()
+  let isAppend = false
+  if(txt[0]=='+'){
+    txt = txt.substring(1)
+    isAppend = true
+  }
+  txt = txt.replaceAll(/ +/g,'-')
+  txt = txt.toLowerCase()
+  return { isAppend: isAppend, id: txt }
+}
+
+The above can be understood more easily with some examples:
+- hash("block name") = "block-name"
+- hash("Block Name") = "block-name"
+- hash("BLOCK name") = "block-name"
+- hash("  BLOCK   name   ") = "block-name"
+(all the above produces the same output)
+- hash("+block name") = "block-name"
+
+
+Now, the most important part of the programs. The annotation declerations. 
+
+What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations makes the document more strucuted and provides a way to extract "knowledge" from the document which can be further processed.  
+
+There are 3 types of annotations :
+- decleration : this will be used to declare blocks or give names to blocks
+- assignment : this will be used to include the content of one blocks in another block (or to declare a block dependency)
+- action : to declare metadata and actions. these annotations are processed within a "context" which is determined by the locations of where it is used
+
+Each annotation type has a different delimiter within which they are "defined" in a document
+
+For each type of annotation, we need to specify a few things :
+- how to extract annotations from the block text ?
+- how generate a replacement text for a certain annotation ? (after an annotation is successfully processed, it can either be removed from the processed block text or replaced with some text or left unchanged)
+
+Decleration annotation : 
+
+.[Annotation declerations]
+const annotations = {
+  declaration: {
+    extract:(text)=&gt;{
+      // all declarations are in the first annotation block.
+      const tx = text.trim()
+      const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
+      const parts = tx.match(theRegex)
+      let rawSource = `.[${randomInteger(10000,99999)}]`
+      if(parts){rawSource = parts[0]}
+      let processedSource = rawSource.replaceAll(".[","")
+      processedSource = processedSource.replaceAll("]","")
+      const blockName = hashBlockId(processedSource)
+      return { rawSource, ...blockName}
+    },
+    generateText: (text)=&gt;{
+      const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
+      return text.replaceAll(theRegex,"")
+    }
+  },
+  assignment: {
+    extract: (text) =&gt;{
+      const txt = text.trim()
+      const theRegex = /\&gt;\[([\w\s\-]+?)\]/gm
+      const parts = txt.match(theRegex)
+      let asmts = []
+      if(parts){
+        parts.map(part=&gt;{
+          let t = part.replaceAll("&gt;[","")
+          t = t.replaceAll("]","")
+          asmts.push({ rawSource: part, blockId: hashBlockId(t)['id']})
+        })
+      }
+      return asmts
+    }
+  }
+}
+
+.[Generate document object]
+  &gt;[Method for First pass]
+  &gt;[Method for Second pass] 
+  &gt;[Generate block processing order]
+  const generateDocObject = (doc,options={})=&gt;{
+    try{
+      const blocks = docToBlocks(doc,"\n\n")
+      let obj = processBlocks(blocks)
+      let docObject = obj.d
+      let blockDepGraph = obj.g
+      let order =  generateProcessingOrder(blockDepGraph)
+      docObject = processBlocksInOrder(docObject,order.vertexInOrder)
+      return {docObject, blockDepGraph, ...order }
+    }catch(error){console.log(error)}
+  } 
+
+.[Method for First pass]
+const processBlocks = (blocks) =&gt; {
+  let d = getBlankDocObj()
+  let g = getBlankDepGraph()
+  let edgesToAdd = []
+  blocks.map((block,index)=&gt;{
+    if(block){
+        const newBlock = annotations.declaration.extract(block)
+        const processedText = annotations.declaration.generateText(block)
+        if(d.blocks.indexOf(newBlock.id)==-1){
+          d.blocks.push(newBlock.id)
+          let data = {
+            rawText: [{block,index}],
+            text:processedText,
+            annotations: { d:{index, ...newBlock}, a:{}}
+          }
+          d.data[newBlock.id] = data
+          g = graph.addVertex(g,{id:newBlock.id})
+        }else{
+          if(newBlock.isAppend){
+            d.data[newBlock.id]['text'] += " \n "+processedText
+            d.data[newBlock.id]['rawText'].push({block,index})
+          }
+        }
+        const allAsmts = annotations.assignment.extract(block)
+        if(!d.data[newBlock.id]['annotations']['a']['valid']){
+          d.data[newBlock.id]['annotations']['a']['valid'] = []
+        }
+        allAsmts.map(itm=&gt;{
+          if(itm.id != newBlock.id){
+            d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
+            edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
+          }
+        })
+    }
+  })
+  edgesToAdd.map(edge=&gt;{g = graph.addEdge(g,edge)})
+  return {d,g}
+}
+
+.[Method for Second pass]
+const processBlocksInOrder = (docObj, vertexOrder) =&gt; {
+  vertexOrder.map(v=&gt;{
+    let validAnn = docObj['data'][v.vertexId]['annotations']['a']['valid']
+    if(validAnn.length &gt; 0){
+      let mainText = docObj['data'][v.vertexId]['text']
+      validAnn.map(annBlock=&gt;{
+        let annText = docObj['data'][annBlock.blockId]['text']
+        mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
+      }) 
+      docObj['data'][v.vertexId]['text'] = mainText
+    }
+  })
+  return docObj
+}
+
+.[Generate Block processing order]
+const generateProcessingOrder = (blockDep)=&gt;{ return graph.TopologicalSort(blockDep) }
+
+.[Generate output document]
+const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
+  if(!options.type){throw new Error("No doc type specified")}
+  const docTypes = {
+    "file-with-entry": async ()=&gt;{
+      if(!options.main){throw new Error("Specify the main block Id which contains the code")}
+      const Document = generateDocObject(doc,options) 
+      return Document['docObject']['data'][options.main]['text']
+    },
+    "explorer": async ()=&gt;{
+      const Document = generateDocObject(doc,options) 
+      const allGraphs = [ Document.blockDepGraph, Document.dfsTree, Document.tsTree ]
+      const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
+      const sanitizeArrows = (text)=&gt;{
+        let sText = text.replaceAll("&lt;","&lt;").replaceAll("&gt;","&gt;")
+        return sText
+      }
+      let explorerHTML = `&lt;!DOCTYPE html&gt;
+          &lt;html lang="en"&gt;
+            &lt;head&gt;
+              &lt;meta charset="UTF-8" /&gt;
+              &lt;meta http-equiv="X-UA-Compatible" content="IE=edge" /&gt;
+              &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;
+              &lt;title&gt;Document Explorer&lt;/title&gt;
+              &lt;link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"/&gt;
+              ${graphHTML.head}
+            &lt;/head&gt;
+            &lt;body&gt;
+              &lt;style&gt;.graph { width: 90%; height: 80vh; border: 1px solid #80808036; }&lt;/style&gt;
+              &lt;div class="container-lg"&gt;
+                &lt;div class="row"&gt;
+                  &lt;div class="col-lg-12"&gt;
+                    &lt;h3&gt;Document explorer&lt;/h3&gt;
+                    &lt;ul class="nav nav-pills mb-3" id="pills-tab" role="tablist"&gt;
+                      &lt;li class="nav-item" role="presentation"&gt; &lt;button class="nav-link active" id="pills-source-tab" data-bs-toggle="pill" data-bs-target="#pills-source" type="button" role="tab" aria-controls="pills-source" aria-selected="true"&gt;Source&lt;/button&gt;&lt;/li&gt;
+                      &lt;li class="nav-item" role="presentation"&gt;&lt;button class="nav-link" id="pills-graph-tab" data-bs-toggle="pill" data-bs-target="#pills-graph" type="button" role="tab" aria-controls="pills-graph" aria-selected="false"&gt;Graphs&lt;/button&gt;&lt;/li&gt;
+                      &lt;li class="nav-item" role="presentation"&gt;&lt;button class="nav-link" id="pills-action-tab" data-bs-toggle="pill" data-bs-target="#pills-action" type="button" role="tab" aria-controls="pills-action" aria-selected="false"&gt;Actions&lt;/button&gt;&lt;/li&gt;
+                    &lt;/ul&gt;
+                    &lt;div class="tab-content" id="pills-tabContent"&gt;
+                      &lt;div class="tab-pane fade show active" id="pills-source" role="tabpanel" aria-labelledby="pills-source-tab" tabindex="0"&gt;
+                        &lt;pre&gt;${sanitizeArrows(doc)}&lt;/pre&gt;
+                      &lt;/div&gt;
+                      &lt;div class="tab-pane fade" id="pills-graph" role="tabpanel" aria-labelledby="pills-graph-tab" tabindex="0"&gt;
+                        ${graphHTML.body}
+                      &lt;/div&gt;
+                      &lt;div class="tab-pane fade" id="pills-action" role="tabpanel" aria-labelledby="pills-action-tab" tabindex="0"&gt;...&lt;/div&gt;
+                    &lt;/div&gt;
+                  &lt;/div&gt;
+                &lt;/div&gt;
+              &lt;/div&gt;
+            &lt;/body&gt;
+            &lt;script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"&gt;&lt;/script&gt;
+          &lt;/html&gt; `
+      return explorerHTML
+    }
+  }
+  const docContent = await  docTypes[options.type]()
+  return docContent
+}</pre>
+                      </div>
+                      <div class="tab-pane fade" id="pills-graph" role="tabpanel" aria-labelledby="pills-graph-tab" tabindex="0">
+                        <style>.graph {width: 90%; height: 80vh; border: 1px solid #80808036;}</style>
             <h2> #1. Block Dependency graph</h2>
             <div class="graph" id="graph0"></div>
             <details><summary>GraphData</summary><pre>{
   "vertices": {
-    "21289": {
-      "label": "21289",
+    "12940": {
+      "label": "12940",
       "weight": "",
       "temp": {}
     },
-    "24126": {
-      "label": "24126",
+    "22001": {
+      "label": "22001",
       "weight": "",
       "temp": {}
     },
-    "25728": {
-      "label": "25728",
+    "22003": {
+      "label": "22003",
       "weight": "",
       "temp": {}
     },
-    "31425": {
-      "label": "31425",
+    "26817": {
+      "label": "26817",
       "weight": "",
       "temp": {}
     },
-    "33675": {
-      "label": "33675",
+    "36613": {
+      "label": "36613",
       "weight": "",
       "temp": {}
     },
-    "48292": {
-      "label": "48292",
+    "39982": {
+      "label": "39982",
       "weight": "",
       "temp": {}
     },
-    "50931": {
-      "label": "50931",
+    "43219": {
+      "label": "43219",
       "weight": "",
       "temp": {}
     },
-    "54152": {
-      "label": "54152",
+    "50614": {
+      "label": "50614",
       "weight": "",
       "temp": {}
     },
-    "58004": {
-      "label": "58004",
+    "52979": {
+      "label": "52979",
       "weight": "",
       "temp": {}
     },
-    "64105": {
-      "label": "64105",
+    "62947": {
+      "label": "62947",
       "weight": "",
       "temp": {}
     },
-    "64665": {
-      "label": "64665",
+    "65083": {
+      "label": "65083",
       "weight": "",
       "temp": {}
     },
-    "67812": {
-      "label": "67812",
+    "69384": {
+      "label": "69384",
       "weight": "",
       "temp": {}
     },
-    "71338": {
-      "label": "71338",
+    "70062": {
+      "label": "70062",
       "weight": "",
       "temp": {}
     },
-    "72515": {
-      "label": "72515",
+    "75400": {
+      "label": "75400",
       "weight": "",
       "temp": {}
     },
-    "84919": {
-      "label": "84919",
+    "88488": {
+      "label": "88488",
       "weight": "",
       "temp": {}
     },
-    "85419": {
-      "label": "85419",
+    "88927": {
+      "label": "88927",
       "weight": "",
       "temp": {}
     },
-    "92917": {
-      "label": "92917",
-      "weight": "",
-      "temp": {}
-    },
-    "97902": {
-      "label": "97902",
+    "94263": {
+      "label": "94263",
       "weight": "",
       "temp": {}
     },
@@ -331,7 +643,7 @@
   }
 }</pre></details>
             <script>
-              let dataForViz0 = {"nodes":[{"id":"21289","label":"21289"},{"id":"24126","label":"24126"},{"id":"25728","label":"25728"},{"id":"31425","label":"31425"},{"id":"33675","label":"33675"},{"id":"48292","label":"48292"},{"id":"50931","label":"50931"},{"id":"54152","label":"54152"},{"id":"58004","label":"58004"},{"id":"64105","label":"64105"},{"id":"64665","label":"64665"},{"id":"67812","label":"67812"},{"id":"71338","label":"71338"},{"id":"72515","label":"72515"},{"id":"84919","label":"84919"},{"id":"85419","label":"85419"},{"id":"92917","label":"92917"},{"id":"97902","label":"97902"},{"id":"main","label":"main"},{"id":"main-program","label":"main-program"},{"id":"program-for-testing","label":"program-for-testing"},{"id":"imports","label":"imports"},{"id":"doc-conventions","label":"doc-conventions"},{"id":"utility-functions","label":"utility-functions"},{"id":"global-declerations","label":"global-declerations"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer"},{"id":"method-to-print-an-object","label":"method-to-print-an-object"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name"},{"id":"annotation-declerations","label":"annotation-declerations"},{"id":"generate-document-object","label":"generate-document-object"},{"id":"method-for-first-pass","label":"method-for-first-pass"},{"id":"method-for-second-pass","label":"method-for-second-pass"},{"id":"generate-block-processing-order","label":"generate-block-processing-order"},{"id":"generate-output-document","label":"generate-output-document"}],"edges":[{"from":"main","to":"imports"},{"from":"main","to":"global-declerations"},{"from":"main","to":"utility-functions"},{"from":"main","to":"annotation-declerations"},{"from":"main","to":"generate-document-object"},{"from":"main","to":"generate-output-document"},{"from":"main-program","to":"main"},{"from":"program-for-testing","to":"main"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks"},{"from":"utility-functions","to":"method-to-generate-random-integer"},{"from":"utility-functions","to":"method-to-print-an-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-processing-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph"},{"from":"utility-functions","to":"method-to-hash-block-name"},{"from":"generate-document-object","to":"method-for-first-pass"},{"from":"generate-document-object","to":"method-for-second-pass"},{"from":"generate-document-object","to":"generate-block-processing-order"}],"options":{"edges":{"arrows":"to"}}}
+              let dataForViz0 = {"nodes":[{"id":"12940","label":"12940"},{"id":"22001","label":"22001"},{"id":"22003","label":"22003"},{"id":"26817","label":"26817"},{"id":"36613","label":"36613"},{"id":"39982","label":"39982"},{"id":"43219","label":"43219"},{"id":"50614","label":"50614"},{"id":"52979","label":"52979"},{"id":"62947","label":"62947"},{"id":"65083","label":"65083"},{"id":"69384","label":"69384"},{"id":"70062","label":"70062"},{"id":"75400","label":"75400"},{"id":"88488","label":"88488"},{"id":"88927","label":"88927"},{"id":"94263","label":"94263"},{"id":"main","label":"main"},{"id":"main-program","label":"main-program"},{"id":"program-for-testing","label":"program-for-testing"},{"id":"imports","label":"imports"},{"id":"doc-conventions","label":"doc-conventions"},{"id":"utility-functions","label":"utility-functions"},{"id":"global-declerations","label":"global-declerations"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer"},{"id":"method-to-print-an-object","label":"method-to-print-an-object"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name"},{"id":"annotation-declerations","label":"annotation-declerations"},{"id":"generate-document-object","label":"generate-document-object"},{"id":"method-for-first-pass","label":"method-for-first-pass"},{"id":"method-for-second-pass","label":"method-for-second-pass"},{"id":"generate-block-processing-order","label":"generate-block-processing-order"},{"id":"generate-output-document","label":"generate-output-document"}],"edges":[{"from":"main","to":"imports"},{"from":"main","to":"global-declerations"},{"from":"main","to":"utility-functions"},{"from":"main","to":"annotation-declerations"},{"from":"main","to":"generate-document-object"},{"from":"main","to":"generate-output-document"},{"from":"main-program","to":"main"},{"from":"program-for-testing","to":"main"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks"},{"from":"utility-functions","to":"method-to-generate-random-integer"},{"from":"utility-functions","to":"method-to-print-an-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-processing-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph"},{"from":"utility-functions","to":"method-to-hash-block-name"},{"from":"generate-document-object","to":"method-for-first-pass"},{"from":"generate-document-object","to":"method-for-second-pass"},{"from":"generate-document-object","to":"generate-block-processing-order"}],"options":{"edges":{"arrows":"to"}}}
               const container0 = document.getElementById('graph0')
               const data0 = {
                 nodes: new vis.DataSet(dataForViz0.nodes),
@@ -343,8 +655,8 @@
             <div class="graph" id="graph1"></div>
             <details><summary>GraphData</summary><pre>{
   "vertices": {
-    "21289": {
-      "label": "21289 (d=1,f=2)",
+    "12940": {
+      "label": "12940 (d=1,f=2)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -354,8 +666,8 @@
         "degree": 0
       }
     },
-    "24126": {
-      "label": "24126 (d=3,f=4)",
+    "22001": {
+      "label": "22001 (d=3,f=4)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -365,8 +677,8 @@
         "degree": 0
       }
     },
-    "25728": {
-      "label": "25728 (d=5,f=6)",
+    "22003": {
+      "label": "22003 (d=5,f=6)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -376,8 +688,8 @@
         "degree": 0
       }
     },
-    "31425": {
-      "label": "31425 (d=7,f=8)",
+    "26817": {
+      "label": "26817 (d=7,f=8)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -387,8 +699,8 @@
         "degree": 0
       }
     },
-    "33675": {
-      "label": "33675 (d=9,f=10)",
+    "36613": {
+      "label": "36613 (d=9,f=10)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -398,8 +710,8 @@
         "degree": 0
       }
     },
-    "48292": {
-      "label": "48292 (d=11,f=12)",
+    "39982": {
+      "label": "39982 (d=11,f=12)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -409,8 +721,8 @@
         "degree": 0
       }
     },
-    "50931": {
-      "label": "50931 (d=13,f=14)",
+    "43219": {
+      "label": "43219 (d=13,f=14)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -420,8 +732,8 @@
         "degree": 0
       }
     },
-    "54152": {
-      "label": "54152 (d=15,f=16)",
+    "50614": {
+      "label": "50614 (d=15,f=16)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -431,8 +743,8 @@
         "degree": 0
       }
     },
-    "58004": {
-      "label": "58004 (d=17,f=18)",
+    "52979": {
+      "label": "52979 (d=17,f=18)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -442,8 +754,8 @@
         "degree": 0
       }
     },
-    "64105": {
-      "label": "64105 (d=19,f=20)",
+    "62947": {
+      "label": "62947 (d=19,f=20)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -453,8 +765,8 @@
         "degree": 0
       }
     },
-    "64665": {
-      "label": "64665 (d=21,f=22)",
+    "65083": {
+      "label": "65083 (d=21,f=22)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -464,8 +776,8 @@
         "degree": 0
       }
     },
-    "67812": {
-      "label": "67812 (d=23,f=24)",
+    "69384": {
+      "label": "69384 (d=23,f=24)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -475,8 +787,8 @@
         "degree": 0
       }
     },
-    "71338": {
-      "label": "71338 (d=25,f=26)",
+    "70062": {
+      "label": "70062 (d=25,f=26)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -486,8 +798,8 @@
         "degree": 0
       }
     },
-    "72515": {
-      "label": "72515 (d=27,f=28)",
+    "75400": {
+      "label": "75400 (d=27,f=28)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -497,8 +809,8 @@
         "degree": 0
       }
     },
-    "84919": {
-      "label": "84919 (d=29,f=30)",
+    "88488": {
+      "label": "88488 (d=29,f=30)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -508,8 +820,8 @@
         "degree": 0
       }
     },
-    "85419": {
-      "label": "85419 (d=31,f=32)",
+    "88927": {
+      "label": "88927 (d=31,f=32)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -519,8 +831,8 @@
         "degree": 0
       }
     },
-    "92917": {
-      "label": "92917 (d=33,f=34)",
+    "94263": {
+      "label": "94263 (d=33,f=34)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -530,30 +842,30 @@
         "degree": 0
       }
     },
-    "97902": {
-      "label": "97902 (d=35,f=36)",
+    "main": {
+      "label": "main (d=35,f=66)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
         "d": 35,
-        "f": 36,
-        "degree": 0
-      }
-    },
-    "main": {
-      "label": "main (d=37,f=68)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": null,
-        "d": 37,
-        "f": 68,
+        "f": 66,
         "degree": 6
       }
     },
     "main-program": {
-      "label": "main-program (d=69,f=70)",
+      "label": "main-program (d=67,f=68)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 67,
+        "f": 68,
+        "degree": 1
+      }
+    },
+    "program-for-testing": {
+      "label": "program-for-testing (d=69,f=70)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -563,19 +875,41 @@
         "degree": 1
       }
     },
-    "program-for-testing": {
-      "label": "program-for-testing (d=71,f=72)",
+    "imports": {
+      "label": "imports (d=36,f=37)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 36,
+        "f": 37,
+        "degree": 0
+      }
+    },
+    "doc-conventions": {
+      "label": "doc-conventions (d=71,f=72)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
         "d": 71,
         "f": 72,
-        "degree": 1
+        "degree": 0
       }
     },
-    "imports": {
-      "label": "imports (d=38,f=39)",
+    "utility-functions": {
+      "label": "utility-functions (d=40,f=53)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 40,
+        "f": 53,
+        "degree": 6
+      }
+    },
+    "global-declerations": {
+      "label": "global-declerations (d=38,f=39)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -585,41 +919,19 @@
         "degree": 0
       }
     },
-    "doc-conventions": {
-      "label": "doc-conventions (d=73,f=74)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": null,
-        "d": 73,
-        "f": 74,
-        "degree": 0
-      }
-    },
-    "utility-functions": {
-      "label": "utility-functions (d=42,f=55)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 42,
-        "f": 55,
-        "degree": 6
-      }
-    },
-    "global-declerations": {
-      "label": "global-declerations (d=40,f=41)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 40,
-        "f": 41,
-        "degree": 0
-      }
-    },
     "method-to-split-doc-into-blocks": {
-      "label": "method-to-split-doc-into-blocks (d=43,f=44)",
+      "label": "method-to-split-doc-into-blocks (d=41,f=42)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 41,
+        "f": 42,
+        "degree": 0
+      }
+    },
+    "method-to-generate-random-integer": {
+      "label": "method-to-generate-random-integer (d=43,f=44)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -629,8 +941,8 @@
         "degree": 0
       }
     },
-    "method-to-generate-random-integer": {
-      "label": "method-to-generate-random-integer (d=45,f=46)",
+    "method-to-print-an-object": {
+      "label": "method-to-print-an-object (d=45,f=46)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -640,8 +952,8 @@
         "degree": 0
       }
     },
-    "method-to-print-an-object": {
-      "label": "method-to-print-an-object (d=47,f=48)",
+    "method-to-generate-blank-block-processing-object": {
+      "label": "method-to-generate-blank-block-processing-object (d=47,f=48)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -651,8 +963,8 @@
         "degree": 0
       }
     },
-    "method-to-generate-blank-block-processing-object": {
-      "label": "method-to-generate-blank-block-processing-object (d=49,f=50)",
+    "method-to-generate-blank-block-dependency-graph": {
+      "label": "method-to-generate-blank-block-dependency-graph (d=49,f=50)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -662,8 +974,8 @@
         "degree": 0
       }
     },
-    "method-to-generate-blank-block-dependency-graph": {
-      "label": "method-to-generate-blank-block-dependency-graph (d=51,f=52)",
+    "method-to-hash-block-name": {
+      "label": "method-to-hash-block-name (d=51,f=52)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -673,41 +985,41 @@
         "degree": 0
       }
     },
-    "method-to-hash-block-name": {
-      "label": "method-to-hash-block-name (d=53,f=54)",
+    "annotation-declerations": {
+      "label": "annotation-declerations (d=54,f=55)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
-        "d": 53,
-        "f": 54,
+        "pi": "main",
+        "d": 54,
+        "f": 55,
         "degree": 0
       }
     },
-    "annotation-declerations": {
-      "label": "annotation-declerations (d=56,f=57)",
+    "generate-document-object": {
+      "label": "generate-document-object (d=56,f=63)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
         "d": 56,
-        "f": 57,
-        "degree": 0
-      }
-    },
-    "generate-document-object": {
-      "label": "generate-document-object (d=58,f=65)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 58,
-        "f": 65,
+        "f": 63,
         "degree": 3
       }
     },
     "method-for-first-pass": {
-      "label": "method-for-first-pass (d=59,f=60)",
+      "label": "method-for-first-pass (d=57,f=58)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 57,
+        "f": 58,
+        "degree": 0
+      }
+    },
+    "method-for-second-pass": {
+      "label": "method-for-second-pass (d=59,f=60)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -717,8 +1029,8 @@
         "degree": 0
       }
     },
-    "method-for-second-pass": {
-      "label": "method-for-second-pass (d=61,f=62)",
+    "generate-block-processing-order": {
+      "label": "generate-block-processing-order (d=61,f=62)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -728,25 +1040,14 @@
         "degree": 0
       }
     },
-    "generate-block-processing-order": {
-      "label": "generate-block-processing-order (d=63,f=64)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "generate-document-object",
-        "d": 63,
-        "f": 64,
-        "degree": 0
-      }
-    },
     "generate-output-document": {
-      "label": "generate-output-document (d=66,f=67)",
+      "label": "generate-output-document (d=64,f=65)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
-        "d": 66,
-        "f": 67,
+        "d": 64,
+        "f": 65,
         "degree": 0
       }
     }
@@ -922,7 +1223,7 @@
   }
 }</pre></details>
             <script>
-              let dataForViz1 = {"nodes":[{"id":"21289","label":"21289 (d=1,f=2)"},{"id":"24126","label":"24126 (d=3,f=4)"},{"id":"25728","label":"25728 (d=5,f=6)"},{"id":"31425","label":"31425 (d=7,f=8)"},{"id":"33675","label":"33675 (d=9,f=10)"},{"id":"48292","label":"48292 (d=11,f=12)"},{"id":"50931","label":"50931 (d=13,f=14)"},{"id":"54152","label":"54152 (d=15,f=16)"},{"id":"58004","label":"58004 (d=17,f=18)"},{"id":"64105","label":"64105 (d=19,f=20)"},{"id":"64665","label":"64665 (d=21,f=22)"},{"id":"67812","label":"67812 (d=23,f=24)"},{"id":"71338","label":"71338 (d=25,f=26)"},{"id":"72515","label":"72515 (d=27,f=28)"},{"id":"84919","label":"84919 (d=29,f=30)"},{"id":"85419","label":"85419 (d=31,f=32)"},{"id":"92917","label":"92917 (d=33,f=34)"},{"id":"97902","label":"97902 (d=35,f=36)"},{"id":"main","label":"main (d=37,f=68)"},{"id":"main-program","label":"main-program (d=69,f=70)"},{"id":"program-for-testing","label":"program-for-testing (d=71,f=72)"},{"id":"imports","label":"imports (d=38,f=39)"},{"id":"doc-conventions","label":"doc-conventions (d=73,f=74)"},{"id":"utility-functions","label":"utility-functions (d=42,f=55)"},{"id":"global-declerations","label":"global-declerations (d=40,f=41)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=43,f=44)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=45,f=46)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=47,f=48)"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object (d=49,f=50)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=51,f=52)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=53,f=54)"},{"id":"annotation-declerations","label":"annotation-declerations (d=56,f=57)"},{"id":"generate-document-object","label":"generate-document-object (d=58,f=65)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=59,f=60)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=61,f=62)"},{"id":"generate-block-processing-order","label":"generate-block-processing-order (d=63,f=64)"},{"id":"generate-output-document","label":"generate-output-document (d=66,f=67)"}],"edges":[{"from":"main","to":"imports","color":"green","label":"tree-edge"},{"from":"main","to":"utility-functions","color":"green","label":"tree-edge"},{"from":"main","to":"global-declerations","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-random-integer","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-print-an-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-processing-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-hash-block-name","color":"green","label":"tree-edge"},{"from":"main","to":"annotation-declerations","color":"green","label":"tree-edge"},{"from":"main","to":"generate-document-object","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-first-pass","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-second-pass","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"generate-block-processing-order","color":"green","label":"tree-edge"},{"from":"main","to":"generate-output-document","color":"green","label":"tree-edge"},{"from":"main-program","to":"main","color":"violet","label":"cross-edge"},{"from":"program-for-testing","to":"main","color":"violet","label":"cross-edge"}],"options":{"edges":{"arrows":"to"}}}
+              let dataForViz1 = {"nodes":[{"id":"12940","label":"12940 (d=1,f=2)"},{"id":"22001","label":"22001 (d=3,f=4)"},{"id":"22003","label":"22003 (d=5,f=6)"},{"id":"26817","label":"26817 (d=7,f=8)"},{"id":"36613","label":"36613 (d=9,f=10)"},{"id":"39982","label":"39982 (d=11,f=12)"},{"id":"43219","label":"43219 (d=13,f=14)"},{"id":"50614","label":"50614 (d=15,f=16)"},{"id":"52979","label":"52979 (d=17,f=18)"},{"id":"62947","label":"62947 (d=19,f=20)"},{"id":"65083","label":"65083 (d=21,f=22)"},{"id":"69384","label":"69384 (d=23,f=24)"},{"id":"70062","label":"70062 (d=25,f=26)"},{"id":"75400","label":"75400 (d=27,f=28)"},{"id":"88488","label":"88488 (d=29,f=30)"},{"id":"88927","label":"88927 (d=31,f=32)"},{"id":"94263","label":"94263 (d=33,f=34)"},{"id":"main","label":"main (d=35,f=66)"},{"id":"main-program","label":"main-program (d=67,f=68)"},{"id":"program-for-testing","label":"program-for-testing (d=69,f=70)"},{"id":"imports","label":"imports (d=36,f=37)"},{"id":"doc-conventions","label":"doc-conventions (d=71,f=72)"},{"id":"utility-functions","label":"utility-functions (d=40,f=53)"},{"id":"global-declerations","label":"global-declerations (d=38,f=39)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=41,f=42)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=43,f=44)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=45,f=46)"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object (d=47,f=48)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=49,f=50)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=51,f=52)"},{"id":"annotation-declerations","label":"annotation-declerations (d=54,f=55)"},{"id":"generate-document-object","label":"generate-document-object (d=56,f=63)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=57,f=58)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=59,f=60)"},{"id":"generate-block-processing-order","label":"generate-block-processing-order (d=61,f=62)"},{"id":"generate-output-document","label":"generate-output-document (d=64,f=65)"}],"edges":[{"from":"main","to":"imports","color":"green","label":"tree-edge"},{"from":"main","to":"utility-functions","color":"green","label":"tree-edge"},{"from":"main","to":"global-declerations","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-random-integer","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-print-an-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-processing-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-hash-block-name","color":"green","label":"tree-edge"},{"from":"main","to":"annotation-declerations","color":"green","label":"tree-edge"},{"from":"main","to":"generate-document-object","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-first-pass","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-second-pass","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"generate-block-processing-order","color":"green","label":"tree-edge"},{"from":"main","to":"generate-output-document","color":"green","label":"tree-edge"},{"from":"main-program","to":"main","color":"violet","label":"cross-edge"},{"from":"program-for-testing","to":"main","color":"violet","label":"cross-edge"}],"options":{"edges":{"arrows":"to"}}}
               const container1 = document.getElementById('graph1')
               const data1 = {
                 nodes: new vis.DataSet(dataForViz1.nodes),
@@ -934,8 +1235,8 @@
             <div class="graph" id="graph2"></div>
             <details><summary>GraphData</summary><pre>{
   "vertices": {
-    "21289": {
-      "label": "21289 (d=1,f=2)",
+    "12940": {
+      "label": "12940 (d=1,f=2)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -945,8 +1246,8 @@
         "degree": 0
       }
     },
-    "24126": {
-      "label": "24126 (d=3,f=4)",
+    "22001": {
+      "label": "22001 (d=3,f=4)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -956,8 +1257,8 @@
         "degree": 0
       }
     },
-    "25728": {
-      "label": "25728 (d=5,f=6)",
+    "22003": {
+      "label": "22003 (d=5,f=6)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -967,8 +1268,8 @@
         "degree": 0
       }
     },
-    "31425": {
-      "label": "31425 (d=7,f=8)",
+    "26817": {
+      "label": "26817 (d=7,f=8)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -978,8 +1279,8 @@
         "degree": 0
       }
     },
-    "33675": {
-      "label": "33675 (d=9,f=10)",
+    "36613": {
+      "label": "36613 (d=9,f=10)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -989,8 +1290,8 @@
         "degree": 0
       }
     },
-    "48292": {
-      "label": "48292 (d=11,f=12)",
+    "39982": {
+      "label": "39982 (d=11,f=12)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1000,8 +1301,8 @@
         "degree": 0
       }
     },
-    "50931": {
-      "label": "50931 (d=13,f=14)",
+    "43219": {
+      "label": "43219 (d=13,f=14)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1011,8 +1312,8 @@
         "degree": 0
       }
     },
-    "54152": {
-      "label": "54152 (d=15,f=16)",
+    "50614": {
+      "label": "50614 (d=15,f=16)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1022,8 +1323,8 @@
         "degree": 0
       }
     },
-    "58004": {
-      "label": "58004 (d=17,f=18)",
+    "52979": {
+      "label": "52979 (d=17,f=18)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1033,8 +1334,8 @@
         "degree": 0
       }
     },
-    "64105": {
-      "label": "64105 (d=19,f=20)",
+    "62947": {
+      "label": "62947 (d=19,f=20)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1044,8 +1345,8 @@
         "degree": 0
       }
     },
-    "64665": {
-      "label": "64665 (d=21,f=22)",
+    "65083": {
+      "label": "65083 (d=21,f=22)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1055,8 +1356,8 @@
         "degree": 0
       }
     },
-    "67812": {
-      "label": "67812 (d=23,f=24)",
+    "69384": {
+      "label": "69384 (d=23,f=24)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1066,8 +1367,8 @@
         "degree": 0
       }
     },
-    "71338": {
-      "label": "71338 (d=25,f=26)",
+    "70062": {
+      "label": "70062 (d=25,f=26)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1077,8 +1378,8 @@
         "degree": 0
       }
     },
-    "72515": {
-      "label": "72515 (d=27,f=28)",
+    "75400": {
+      "label": "75400 (d=27,f=28)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1088,8 +1389,8 @@
         "degree": 0
       }
     },
-    "84919": {
-      "label": "84919 (d=29,f=30)",
+    "88488": {
+      "label": "88488 (d=29,f=30)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1099,8 +1400,8 @@
         "degree": 0
       }
     },
-    "85419": {
-      "label": "85419 (d=31,f=32)",
+    "88927": {
+      "label": "88927 (d=31,f=32)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1110,8 +1411,8 @@
         "degree": 0
       }
     },
-    "92917": {
-      "label": "92917 (d=33,f=34)",
+    "94263": {
+      "label": "94263 (d=33,f=34)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1121,30 +1422,30 @@
         "degree": 0
       }
     },
-    "97902": {
-      "label": "97902 (d=35,f=36)",
+    "main": {
+      "label": "main (d=35,f=66)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
         "d": 35,
-        "f": 36,
-        "degree": 0
-      }
-    },
-    "main": {
-      "label": "main (d=37,f=68)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": null,
-        "d": 37,
-        "f": 68,
+        "f": 66,
         "degree": 6
       }
     },
     "main-program": {
-      "label": "main-program (d=69,f=70)",
+      "label": "main-program (d=67,f=68)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 67,
+        "f": 68,
+        "degree": 1
+      }
+    },
+    "program-for-testing": {
+      "label": "program-for-testing (d=69,f=70)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1154,19 +1455,41 @@
         "degree": 1
       }
     },
-    "program-for-testing": {
-      "label": "program-for-testing (d=71,f=72)",
+    "imports": {
+      "label": "imports (d=36,f=37)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 36,
+        "f": 37,
+        "degree": 0
+      }
+    },
+    "doc-conventions": {
+      "label": "doc-conventions (d=71,f=72)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
         "d": 71,
         "f": 72,
-        "degree": 1
+        "degree": 0
       }
     },
-    "imports": {
-      "label": "imports (d=38,f=39)",
+    "utility-functions": {
+      "label": "utility-functions (d=40,f=53)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 40,
+        "f": 53,
+        "degree": 6
+      }
+    },
+    "global-declerations": {
+      "label": "global-declerations (d=38,f=39)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1176,41 +1499,19 @@
         "degree": 0
       }
     },
-    "doc-conventions": {
-      "label": "doc-conventions (d=73,f=74)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": null,
-        "d": 73,
-        "f": 74,
-        "degree": 0
-      }
-    },
-    "utility-functions": {
-      "label": "utility-functions (d=42,f=55)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 42,
-        "f": 55,
-        "degree": 6
-      }
-    },
-    "global-declerations": {
-      "label": "global-declerations (d=40,f=41)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 40,
-        "f": 41,
-        "degree": 0
-      }
-    },
     "method-to-split-doc-into-blocks": {
-      "label": "method-to-split-doc-into-blocks (d=43,f=44)",
+      "label": "method-to-split-doc-into-blocks (d=41,f=42)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 41,
+        "f": 42,
+        "degree": 0
+      }
+    },
+    "method-to-generate-random-integer": {
+      "label": "method-to-generate-random-integer (d=43,f=44)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1220,8 +1521,8 @@
         "degree": 0
       }
     },
-    "method-to-generate-random-integer": {
-      "label": "method-to-generate-random-integer (d=45,f=46)",
+    "method-to-print-an-object": {
+      "label": "method-to-print-an-object (d=45,f=46)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1231,8 +1532,8 @@
         "degree": 0
       }
     },
-    "method-to-print-an-object": {
-      "label": "method-to-print-an-object (d=47,f=48)",
+    "method-to-generate-blank-block-processing-object": {
+      "label": "method-to-generate-blank-block-processing-object (d=47,f=48)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1242,8 +1543,8 @@
         "degree": 0
       }
     },
-    "method-to-generate-blank-block-processing-object": {
-      "label": "method-to-generate-blank-block-processing-object (d=49,f=50)",
+    "method-to-generate-blank-block-dependency-graph": {
+      "label": "method-to-generate-blank-block-dependency-graph (d=49,f=50)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1253,8 +1554,8 @@
         "degree": 0
       }
     },
-    "method-to-generate-blank-block-dependency-graph": {
-      "label": "method-to-generate-blank-block-dependency-graph (d=51,f=52)",
+    "method-to-hash-block-name": {
+      "label": "method-to-hash-block-name (d=51,f=52)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1264,41 +1565,41 @@
         "degree": 0
       }
     },
-    "method-to-hash-block-name": {
-      "label": "method-to-hash-block-name (d=53,f=54)",
+    "annotation-declerations": {
+      "label": "annotation-declerations (d=54,f=55)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
-        "d": 53,
-        "f": 54,
+        "pi": "main",
+        "d": 54,
+        "f": 55,
         "degree": 0
       }
     },
-    "annotation-declerations": {
-      "label": "annotation-declerations (d=56,f=57)",
+    "generate-document-object": {
+      "label": "generate-document-object (d=56,f=63)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
         "d": 56,
-        "f": 57,
-        "degree": 0
-      }
-    },
-    "generate-document-object": {
-      "label": "generate-document-object (d=58,f=65)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 58,
-        "f": 65,
+        "f": 63,
         "degree": 3
       }
     },
     "method-for-first-pass": {
-      "label": "method-for-first-pass (d=59,f=60)",
+      "label": "method-for-first-pass (d=57,f=58)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 57,
+        "f": 58,
+        "degree": 0
+      }
+    },
+    "method-for-second-pass": {
+      "label": "method-for-second-pass (d=59,f=60)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1308,8 +1609,8 @@
         "degree": 0
       }
     },
-    "method-for-second-pass": {
-      "label": "method-for-second-pass (d=61,f=62)",
+    "generate-block-processing-order": {
+      "label": "generate-block-processing-order (d=61,f=62)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1319,151 +1620,133 @@
         "degree": 0
       }
     },
-    "generate-block-processing-order": {
-      "label": "generate-block-processing-order (d=63,f=64)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "generate-document-object",
-        "d": 63,
-        "f": 64,
-        "degree": 0
-      }
-    },
     "generate-output-document": {
-      "label": "generate-output-document (d=66,f=67)",
+      "label": "generate-output-document (d=64,f=65)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
-        "d": 66,
-        "f": 67,
+        "d": 64,
+        "f": 65,
         "degree": 0
       }
     }
   },
   "edges": [
     {
-      "v1": "21289",
-      "v2": "24126",
+      "v1": "12940",
+      "v2": "22001",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "24126",
-      "v2": "25728",
+      "v1": "22001",
+      "v2": "22003",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "25728",
-      "v2": "31425",
+      "v1": "22003",
+      "v2": "26817",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "31425",
-      "v2": "33675",
+      "v1": "26817",
+      "v2": "36613",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "33675",
-      "v2": "48292",
+      "v1": "36613",
+      "v2": "39982",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "48292",
-      "v2": "50931",
+      "v1": "39982",
+      "v2": "43219",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "50931",
-      "v2": "54152",
+      "v1": "43219",
+      "v2": "50614",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "54152",
-      "v2": "58004",
+      "v1": "50614",
+      "v2": "52979",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "58004",
-      "v2": "64105",
+      "v1": "52979",
+      "v2": "62947",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "64105",
-      "v2": "64665",
+      "v1": "62947",
+      "v2": "65083",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "64665",
-      "v2": "67812",
+      "v1": "65083",
+      "v2": "69384",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "67812",
-      "v2": "71338",
+      "v1": "69384",
+      "v2": "70062",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "71338",
-      "v2": "72515",
+      "v1": "70062",
+      "v2": "75400",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "72515",
-      "v2": "84919",
+      "v1": "75400",
+      "v2": "88488",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "84919",
-      "v2": "85419",
+      "v1": "88488",
+      "v2": "88927",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "85419",
-      "v2": "92917",
+      "v1": "88927",
+      "v2": "94263",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "92917",
-      "v2": "97902",
-      "weight": "",
-      "label": "",
-      "temp": {}
-    },
-    {
-      "v1": "97902",
+      "v1": "94263",
       "v2": "imports",
       "weight": "",
       "label": "",
@@ -1612,7 +1895,7 @@
   }
 }</pre></details>
             <script>
-              let dataForViz2 = {"nodes":[{"id":"21289","label":"21289 (d=1,f=2)"},{"id":"24126","label":"24126 (d=3,f=4)"},{"id":"25728","label":"25728 (d=5,f=6)"},{"id":"31425","label":"31425 (d=7,f=8)"},{"id":"33675","label":"33675 (d=9,f=10)"},{"id":"48292","label":"48292 (d=11,f=12)"},{"id":"50931","label":"50931 (d=13,f=14)"},{"id":"54152","label":"54152 (d=15,f=16)"},{"id":"58004","label":"58004 (d=17,f=18)"},{"id":"64105","label":"64105 (d=19,f=20)"},{"id":"64665","label":"64665 (d=21,f=22)"},{"id":"67812","label":"67812 (d=23,f=24)"},{"id":"71338","label":"71338 (d=25,f=26)"},{"id":"72515","label":"72515 (d=27,f=28)"},{"id":"84919","label":"84919 (d=29,f=30)"},{"id":"85419","label":"85419 (d=31,f=32)"},{"id":"92917","label":"92917 (d=33,f=34)"},{"id":"97902","label":"97902 (d=35,f=36)"},{"id":"main","label":"main (d=37,f=68)"},{"id":"main-program","label":"main-program (d=69,f=70)"},{"id":"program-for-testing","label":"program-for-testing (d=71,f=72)"},{"id":"imports","label":"imports (d=38,f=39)"},{"id":"doc-conventions","label":"doc-conventions (d=73,f=74)"},{"id":"utility-functions","label":"utility-functions (d=42,f=55)"},{"id":"global-declerations","label":"global-declerations (d=40,f=41)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=43,f=44)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=45,f=46)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=47,f=48)"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object (d=49,f=50)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=51,f=52)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=53,f=54)"},{"id":"annotation-declerations","label":"annotation-declerations (d=56,f=57)"},{"id":"generate-document-object","label":"generate-document-object (d=58,f=65)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=59,f=60)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=61,f=62)"},{"id":"generate-block-processing-order","label":"generate-block-processing-order (d=63,f=64)"},{"id":"generate-output-document","label":"generate-output-document (d=66,f=67)"}],"edges":[{"from":"21289","to":"24126"},{"from":"24126","to":"25728"},{"from":"25728","to":"31425"},{"from":"31425","to":"33675"},{"from":"33675","to":"48292"},{"from":"48292","to":"50931"},{"from":"50931","to":"54152"},{"from":"54152","to":"58004"},{"from":"58004","to":"64105"},{"from":"64105","to":"64665"},{"from":"64665","to":"67812"},{"from":"67812","to":"71338"},{"from":"71338","to":"72515"},{"from":"72515","to":"84919"},{"from":"84919","to":"85419"},{"from":"85419","to":"92917"},{"from":"92917","to":"97902"},{"from":"97902","to":"imports"},{"from":"imports","to":"global-declerations"},{"from":"global-declerations","to":"method-to-split-doc-into-blocks"},{"from":"method-to-split-doc-into-blocks","to":"method-to-generate-random-integer"},{"from":"method-to-generate-random-integer","to":"method-to-print-an-object"},{"from":"method-to-print-an-object","to":"method-to-generate-blank-block-processing-object"},{"from":"method-to-generate-blank-block-processing-object","to":"method-to-generate-blank-block-dependency-graph"},{"from":"method-to-generate-blank-block-dependency-graph","to":"method-to-hash-block-name"},{"from":"method-to-hash-block-name","to":"utility-functions"},{"from":"utility-functions","to":"annotation-declerations"},{"from":"annotation-declerations","to":"method-for-first-pass"},{"from":"method-for-first-pass","to":"method-for-second-pass"},{"from":"method-for-second-pass","to":"generate-block-processing-order"},{"from":"generate-block-processing-order","to":"generate-document-object"},{"from":"generate-document-object","to":"generate-output-document"},{"from":"generate-output-document","to":"main"},{"from":"main","to":"main-program"},{"from":"main-program","to":"program-for-testing"},{"from":"program-for-testing","to":"doc-conventions"}],"options":{"edges":{"arrows":"to"}}}
+              let dataForViz2 = {"nodes":[{"id":"12940","label":"12940 (d=1,f=2)"},{"id":"22001","label":"22001 (d=3,f=4)"},{"id":"22003","label":"22003 (d=5,f=6)"},{"id":"26817","label":"26817 (d=7,f=8)"},{"id":"36613","label":"36613 (d=9,f=10)"},{"id":"39982","label":"39982 (d=11,f=12)"},{"id":"43219","label":"43219 (d=13,f=14)"},{"id":"50614","label":"50614 (d=15,f=16)"},{"id":"52979","label":"52979 (d=17,f=18)"},{"id":"62947","label":"62947 (d=19,f=20)"},{"id":"65083","label":"65083 (d=21,f=22)"},{"id":"69384","label":"69384 (d=23,f=24)"},{"id":"70062","label":"70062 (d=25,f=26)"},{"id":"75400","label":"75400 (d=27,f=28)"},{"id":"88488","label":"88488 (d=29,f=30)"},{"id":"88927","label":"88927 (d=31,f=32)"},{"id":"94263","label":"94263 (d=33,f=34)"},{"id":"main","label":"main (d=35,f=66)"},{"id":"main-program","label":"main-program (d=67,f=68)"},{"id":"program-for-testing","label":"program-for-testing (d=69,f=70)"},{"id":"imports","label":"imports (d=36,f=37)"},{"id":"doc-conventions","label":"doc-conventions (d=71,f=72)"},{"id":"utility-functions","label":"utility-functions (d=40,f=53)"},{"id":"global-declerations","label":"global-declerations (d=38,f=39)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=41,f=42)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=43,f=44)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=45,f=46)"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object (d=47,f=48)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=49,f=50)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=51,f=52)"},{"id":"annotation-declerations","label":"annotation-declerations (d=54,f=55)"},{"id":"generate-document-object","label":"generate-document-object (d=56,f=63)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=57,f=58)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=59,f=60)"},{"id":"generate-block-processing-order","label":"generate-block-processing-order (d=61,f=62)"},{"id":"generate-output-document","label":"generate-output-document (d=64,f=65)"}],"edges":[{"from":"12940","to":"22001"},{"from":"22001","to":"22003"},{"from":"22003","to":"26817"},{"from":"26817","to":"36613"},{"from":"36613","to":"39982"},{"from":"39982","to":"43219"},{"from":"43219","to":"50614"},{"from":"50614","to":"52979"},{"from":"52979","to":"62947"},{"from":"62947","to":"65083"},{"from":"65083","to":"69384"},{"from":"69384","to":"70062"},{"from":"70062","to":"75400"},{"from":"75400","to":"88488"},{"from":"88488","to":"88927"},{"from":"88927","to":"94263"},{"from":"94263","to":"imports"},{"from":"imports","to":"global-declerations"},{"from":"global-declerations","to":"method-to-split-doc-into-blocks"},{"from":"method-to-split-doc-into-blocks","to":"method-to-generate-random-integer"},{"from":"method-to-generate-random-integer","to":"method-to-print-an-object"},{"from":"method-to-print-an-object","to":"method-to-generate-blank-block-processing-object"},{"from":"method-to-generate-blank-block-processing-object","to":"method-to-generate-blank-block-dependency-graph"},{"from":"method-to-generate-blank-block-dependency-graph","to":"method-to-hash-block-name"},{"from":"method-to-hash-block-name","to":"utility-functions"},{"from":"utility-functions","to":"annotation-declerations"},{"from":"annotation-declerations","to":"method-for-first-pass"},{"from":"method-for-first-pass","to":"method-for-second-pass"},{"from":"method-for-second-pass","to":"generate-block-processing-order"},{"from":"generate-block-processing-order","to":"generate-document-object"},{"from":"generate-document-object","to":"generate-output-document"},{"from":"generate-output-document","to":"main"},{"from":"main","to":"main-program"},{"from":"main-program","to":"program-for-testing"},{"from":"program-for-testing","to":"doc-conventions"}],"options":{"edges":{"arrows":"to"}}}
               const container2 = document.getElementById('graph2')
               const data2 = {
                 nodes: new vis.DataSet(dataForViz2.nodes),
@@ -1620,4 +1903,12 @@
               }
               let network2 = new vis.Network(container2, data2, {"edges":{"arrows":"to"}});
             </script>
-        </body></html> 
+                      </div>
+                      <div class="tab-pane fade" id="pills-action" role="tabpanel" aria-labelledby="pills-action-tab" tabindex="0">...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </body>
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+          </html> 
