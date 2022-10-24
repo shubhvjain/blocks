@@ -1,39 +1,24 @@
 
-const docToBlocks = (doc,splitter)=>{
-  return doc.split(splitter)
-}
-
-
-const getBlankDocObj = ()=>{
-  let newObj = {
-    blocks:[],
-    data:{},
-  }
-  return {... newObj}
-}
-
-
+  
+  
 const graph = require('./graph')
+  
+const BlockSplitCharacter = "\n"
+  
+  
+const docToBlocks = (doc,splitter)=>{ return doc.split(splitter)}
+  
+const randomInteger = (min=0,max=100) => { return Math.floor(Math.random() * (max - min + 1) + min)}  
+  
+const print = (obj,indent=1)=>{console.log(JSON.stringify(obj,null,indent))} 
+  
+const getBlankDocObj = ()=>{ return { blocks:[], data:{}}}
+  
 const getBlankDepGraph = ()=>{
-  let newG = graph.createGraph({
-    title:"Block Dependency graph",
-    hasLoops: false,
-    hasDirectedEdges: true, 
-    isSimple: true,
-  })
+  let newG = graph.createGraph({ title:"Block Dependency graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
   return {...newG}
 }
-
-
-
-const randomInteger = (min=0,max=100) => {
-    return Math.floor(Math.random() * (max - min + 1) + min)
- }
-
-const print = (obj,indent=1)=>{
-  console.log(JSON.stringify(obj,null,indent))
-} 
-
+  
 const hashBlockId = (text)=>{
   let txt = text.trim()
   let isAppend = false
@@ -45,7 +30,7 @@ const hashBlockId = (text)=>{
   txt = txt.toLowerCase()
   return { isAppend: isAppend, id: txt }
 }
-
+  
 const annotations = {
   declaration: {
     extract:(text)=>{
@@ -75,17 +60,15 @@ const annotations = {
         parts.map(part=>{
           let t = part.replaceAll(">[","")
           t = t.replaceAll("]","")
-          asmts.push({
-            rawSource: part,
-            blockId: hashBlockId(t)['id']
-          })
+          asmts.push({ rawSource: part, blockId: hashBlockId(t)['id']})
         })
       }
       return asmts
     }
   }
 }
-
+  
+  
 const processBlocks = (blocks) => {
   let d = getBlankDocObj()
   let g = getBlankDepGraph()
@@ -99,14 +82,10 @@ const processBlocks = (blocks) => {
           let data = {
             rawText: [{block,index}],
             text:processedText,
-            annotations: {
-              d:{index, ...newBlock},
-              a:{}
-            }
+            annotations: { d:{index, ...newBlock}, a:{}}
           }
           d.data[newBlock.id] = data
           g = graph.addVertex(g,{id:newBlock.id})
-          
         }else{
           if(newBlock.isAppend){
             d.data[newBlock.id]['text'] += " \n "+processedText
@@ -117,7 +96,6 @@ const processBlocks = (blocks) => {
         if(!d.data[newBlock.id]['annotations']['a']['valid']){
           d.data[newBlock.id]['annotations']['a']['valid'] = []
         }
-
         allAsmts.map(itm=>{
           if(itm.id != newBlock.id){
             d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
@@ -129,69 +107,58 @@ const processBlocks = (blocks) => {
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
   return {d,g}
 }
-
-
-const generateProcessingOrder = (blockDep)=>{
-  const tsort = graph.TopologicalSort(blockDep)
-  return tsort
-}
-
-
+  
 const processBlocksInOrder = (docObj, vertexOrder) => {
   vertexOrder.map(v=>{
-    console.log("processing -",v)
     let validAnn = docObj['data'][v.vertexId]['annotations']['a']['valid']
-    console.log(validAnn)
     if(validAnn.length > 0){
       let mainText = docObj['data'][v.vertexId]['text']
       validAnn.map(annBlock=>{
-        //console.log(annBlock)
-        //console.log(mainText)
         let annText = docObj['data'][annBlock.blockId]['text']
-        console.log(annText)
         mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
       }) 
-      
       docObj['data'][v.vertexId]['text'] = mainText
     }
   })
   return docObj
-}
-
-
-const generateDocObject = (doc,options={})=>{
-  try{
-    const blocks = docToBlocks(doc,"\n\n")
-    let obj = processBlocks(blocks)
-    let docObject = obj.d
-    let blockDepGraph = obj.g
-    //let view = [blockDepGraph]
-    let order =  generateProcessingOrder(blockDepGraph)
-    docObject = processBlocksInOrder(docObject,order.vertexInOrder)
-    //print(docObject)
-    //view.push(order.dfsTree)
-    //view.push(order.tsTree)
-    //graph.generateGraphPreview(view,{format:'html',outputPath:"sample.html"})
-    return {docObject, blockDepGraph, ...order }
-  }catch(error){console.log(error)}
 } 
-
-
-const generateDocument =  (doc,options={})=>{
-  if(!options.main){throw new Error("Specify the main block Id which contains the code")}
-  const Document = generateDocObject(doc,options) 
-  return Document['docObject']['data'][options.main]['text']
+  
+const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
+  const generateDocObject = (doc,options={})=>{
+    try{
+      const blocks = docToBlocks(doc,"\n\n")
+      let obj = processBlocks(blocks)
+      let docObject = obj.d
+      let blockDepGraph = obj.g
+      let order =  generateProcessingOrder(blockDepGraph)
+      docObject = processBlocksInOrder(docObject,order.vertexInOrder)
+      return {docObject, blockDepGraph, ...order }
+    }catch(error){console.log(error)}
+  } 
+  
+const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
+  if(!options.type){throw new Error("No doc type specified")}
+  const docTypes = {
+    "file-with-entry": async ()=>{
+      if(!options.main){throw new Error("Specify the main block Id which contains the code")}
+      const Document = generateDocObject(doc,options) 
+      return Document['docObject']['data'][options.main]['text']
+    },
+    explorer: async ()=>{
+      const Document = generateDocObject(doc,options) 
+      const allGraphs = [ Document.blockDepGraph, Document.dfsTree, Document.tsTree ]
+      const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
+      let explorerHTML = `<!DOCTYPE html><html lang="en">
+        <head> <meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Document Explorer</title>
+        ${graphHTML.head}
+         </head>
+        <body>
+        ${graphHTML.body}
+        </body></html> `
+      return explorerHTML
+    }
+  }
+  const docContent = await  docTypes[options.type]()
+  return docContent
 }
-
-
-module.exports = {
-  docToBlocks,
-  getBlankDocObj,
-  getBlankDepGraph,
-  hashBlockId,
-  annotations,
-  generateProcessingOrder,
-  processBlocksInOrder,
-  generateDocObject,
-  generateDocument
-}
+  module.exports = { docToBlocks, getBlankDocObj, getBlankDepGraph, hashBlockId, annotations, generateProcessingOrder, processBlocksInOrder, generateDocObject, generateOutputDoc }

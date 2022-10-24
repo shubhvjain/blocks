@@ -1,7 +1,8 @@
-This program takes in annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 3 objects : 
+This program takes in annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 4 objects : 
 - the "processedBlock" object which  contains the final values of all  the blocks 
 - "blockDepGraph :  a directed acyclic graph which shows the relationships among the blocks 
 - "processingOrder" :  topological order in which the blocks must be processed to ensure that for all blocks, their dependencies are processed before it
+- "knowledgeGraph" : user defined graph, generated automatically
 
 Here is the main program that does that : 
 
@@ -22,7 +23,8 @@ Here's the main program file :
 .[Main Program]
   >[Main]
   module.exports = { generateDocObject, generateOutputDoc }
- 
+
+
 And here's the test program file:
 
 .[Program for testing]
@@ -78,7 +80,7 @@ const getBlankDocObj = ()=>{ return { blocks:[], data:{}}}
 
 .[method to generate blank block dependency graph]
 const getBlankDepGraph = ()=>{
-  let newG = graph.createGraph({ title:"Block Dependency graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true  })
+  let newG = graph.createGraph({ title:"Block Dependency graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
   return {...newG}
 }
 
@@ -235,8 +237,28 @@ const processBlocksInOrder = (docObj, vertexOrder) => {
 const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
 
 .[Generate output document]
-const generateDocument =  (doc,options={})=>{
-  if(!options.main){throw new Error("Specify the main block Id which contains the code")}
-  const Document = generateDocObject(doc,options) 
-  return Document['docObject']['data'][options.main]['text']
+const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
+  if(!options.type){throw new Error("No doc type specified")}
+  const docTypes = {
+    "file-with-entry": async ()=>{
+      if(!options.main){throw new Error("Specify the main block Id which contains the code")}
+      const Document = generateDocObject(doc,options) 
+      return Document['docObject']['data'][options.main]['text']
+    },
+    explorer: async ()=>{
+      const Document = generateDocObject(doc,options) 
+      const allGraphs = [ Document.blockDepGraph, Document.dfsTree, Document.tsTree ]
+      const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
+      let explorerHTML = `<!DOCTYPE html><html lang="en">
+        <head> <meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Document Explorer</title>
+        ${graphHTML.head}
+         </head>
+        <body>
+        ${graphHTML.body}
+        </body></html> `
+      return explorerHTML
+    }
+  }
+  const docContent = await  docTypes[options.type]()
+  return docContent
 }

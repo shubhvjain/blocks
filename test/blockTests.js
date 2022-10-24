@@ -278,14 +278,28 @@ let t5 = `.[program version] v0.1.2
 Hello. Testing if it works.
 `
 
+const fs = require("fs/promises");
+
+const saveFile = async (filePath, fileContent) => {
+  await fs.writeFile(filePath,fileContent)
+}
+
+const getFile = async (filePath) => {
+  const data = await fs.readFile(filePath, { encoding: "utf8" });
+  return data;
+}
+
+// getFile("source/block.txt").then(file=>{
+//   b.generateOutputDoc(file,{type:"explorer"})
+//   .then(doc=>{
+//     console.log(doc)
+//     saveFile("test/explore.html",doc)
+//   })
+// })
+// .catch(err=>{console.log(err)})
+// console.log(JSON.stringify(d.docObject,null,1))
+// const g = require("./graph")
+// g.generateGraphPreview([d.blockDepGraph,d.dfsTree,d.tsTree],{format:"html",outputPath:"sample4.html"})
 
 
-// console.log(b.generateDocument(t5,{main: "index-page"}))
-let d = b.generateDocObject(t5)
 
-
-console.log(JSON.stringify(d.docObject,null,1))
-
-const g = require("./graph")
-
-g.generateGraphPreview([d.blockDepGraph,d.dfsTree,d.tsTree],{format:"html",outputPath:"sample4.html"})

@@ -1,0 +1,1623 @@
+<!DOCTYPE html><html lang="en">
+        <head> <meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Document Explorer</title>
+         <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+         </head>
+        <body>
+        <style>.graph {width: 90%; height: 80vh; border: 1px solid #80808036;}</style>
+            <h2> #1. Block Dependency graph</h2>
+            <div class="graph" id="graph0"></div>
+            <details><summary>GraphData</summary><pre>{
+  "vertices": {
+    "21289": {
+      "label": "21289",
+      "weight": "",
+      "temp": {}
+    },
+    "24126": {
+      "label": "24126",
+      "weight": "",
+      "temp": {}
+    },
+    "25728": {
+      "label": "25728",
+      "weight": "",
+      "temp": {}
+    },
+    "31425": {
+      "label": "31425",
+      "weight": "",
+      "temp": {}
+    },
+    "33675": {
+      "label": "33675",
+      "weight": "",
+      "temp": {}
+    },
+    "48292": {
+      "label": "48292",
+      "weight": "",
+      "temp": {}
+    },
+    "50931": {
+      "label": "50931",
+      "weight": "",
+      "temp": {}
+    },
+    "54152": {
+      "label": "54152",
+      "weight": "",
+      "temp": {}
+    },
+    "58004": {
+      "label": "58004",
+      "weight": "",
+      "temp": {}
+    },
+    "64105": {
+      "label": "64105",
+      "weight": "",
+      "temp": {}
+    },
+    "64665": {
+      "label": "64665",
+      "weight": "",
+      "temp": {}
+    },
+    "67812": {
+      "label": "67812",
+      "weight": "",
+      "temp": {}
+    },
+    "71338": {
+      "label": "71338",
+      "weight": "",
+      "temp": {}
+    },
+    "72515": {
+      "label": "72515",
+      "weight": "",
+      "temp": {}
+    },
+    "84919": {
+      "label": "84919",
+      "weight": "",
+      "temp": {}
+    },
+    "85419": {
+      "label": "85419",
+      "weight": "",
+      "temp": {}
+    },
+    "92917": {
+      "label": "92917",
+      "weight": "",
+      "temp": {}
+    },
+    "97902": {
+      "label": "97902",
+      "weight": "",
+      "temp": {}
+    },
+    "main": {
+      "label": "main",
+      "weight": "",
+      "temp": {}
+    },
+    "main-program": {
+      "label": "main-program",
+      "weight": "",
+      "temp": {}
+    },
+    "program-for-testing": {
+      "label": "program-for-testing",
+      "weight": "",
+      "temp": {}
+    },
+    "imports": {
+      "label": "imports",
+      "weight": "",
+      "temp": {}
+    },
+    "doc-conventions": {
+      "label": "doc-conventions",
+      "weight": "",
+      "temp": {}
+    },
+    "utility-functions": {
+      "label": "utility-functions",
+      "weight": "",
+      "temp": {}
+    },
+    "global-declerations": {
+      "label": "global-declerations",
+      "weight": "",
+      "temp": {}
+    },
+    "method-to-split-doc-into-blocks": {
+      "label": "method-to-split-doc-into-blocks",
+      "weight": "",
+      "temp": {}
+    },
+    "method-to-generate-random-integer": {
+      "label": "method-to-generate-random-integer",
+      "weight": "",
+      "temp": {}
+    },
+    "method-to-print-an-object": {
+      "label": "method-to-print-an-object",
+      "weight": "",
+      "temp": {}
+    },
+    "method-to-generate-blank-block-processing-object": {
+      "label": "method-to-generate-blank-block-processing-object",
+      "weight": "",
+      "temp": {}
+    },
+    "method-to-generate-blank-block-dependency-graph": {
+      "label": "method-to-generate-blank-block-dependency-graph",
+      "weight": "",
+      "temp": {}
+    },
+    "method-to-hash-block-name": {
+      "label": "method-to-hash-block-name",
+      "weight": "",
+      "temp": {}
+    },
+    "annotation-declerations": {
+      "label": "annotation-declerations",
+      "weight": "",
+      "temp": {}
+    },
+    "generate-document-object": {
+      "label": "generate-document-object",
+      "weight": "",
+      "temp": {}
+    },
+    "method-for-first-pass": {
+      "label": "method-for-first-pass",
+      "weight": "",
+      "temp": {}
+    },
+    "method-for-second-pass": {
+      "label": "method-for-second-pass",
+      "weight": "",
+      "temp": {}
+    },
+    "generate-block-processing-order": {
+      "label": "generate-block-processing-order",
+      "weight": "",
+      "temp": {}
+    },
+    "generate-output-document": {
+      "label": "generate-output-document",
+      "weight": "",
+      "temp": {}
+    }
+  },
+  "edges": [
+    {
+      "v1": "main",
+      "v2": "imports",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "main",
+      "v2": "global-declerations",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "main",
+      "v2": "utility-functions",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "main",
+      "v2": "annotation-declerations",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "main",
+      "v2": "generate-document-object",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "main",
+      "v2": "generate-output-document",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "main-program",
+      "v2": "main",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "program-for-testing",
+      "v2": "main",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-split-doc-into-blocks",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-generate-random-integer",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-print-an-object",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-generate-blank-block-processing-object",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-generate-blank-block-dependency-graph",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-hash-block-name",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "generate-document-object",
+      "v2": "method-for-first-pass",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "generate-document-object",
+      "v2": "method-for-second-pass",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "generate-document-object",
+      "v2": "generate-block-processing-order",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    }
+  ],
+  "metadata": {
+    "title": "Block Dependency graph",
+    "hasLoops": false,
+    "hasEdgeWeights": false,
+    "hasDirectedEdges": true,
+    "isSimple": true
+  },
+  "options": {
+    "defaultNewEdgeLabel": "",
+    "defaultNewVertexLabel": "",
+    "defaultNewVertexWeight": "",
+    "defaultNewEdgeWeight": "",
+    "addBlankVertex": true
+  }
+}</pre></details>
+            <script>
+              let dataForViz0 = {"nodes":[{"id":"21289","label":"21289"},{"id":"24126","label":"24126"},{"id":"25728","label":"25728"},{"id":"31425","label":"31425"},{"id":"33675","label":"33675"},{"id":"48292","label":"48292"},{"id":"50931","label":"50931"},{"id":"54152","label":"54152"},{"id":"58004","label":"58004"},{"id":"64105","label":"64105"},{"id":"64665","label":"64665"},{"id":"67812","label":"67812"},{"id":"71338","label":"71338"},{"id":"72515","label":"72515"},{"id":"84919","label":"84919"},{"id":"85419","label":"85419"},{"id":"92917","label":"92917"},{"id":"97902","label":"97902"},{"id":"main","label":"main"},{"id":"main-program","label":"main-program"},{"id":"program-for-testing","label":"program-for-testing"},{"id":"imports","label":"imports"},{"id":"doc-conventions","label":"doc-conventions"},{"id":"utility-functions","label":"utility-functions"},{"id":"global-declerations","label":"global-declerations"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer"},{"id":"method-to-print-an-object","label":"method-to-print-an-object"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name"},{"id":"annotation-declerations","label":"annotation-declerations"},{"id":"generate-document-object","label":"generate-document-object"},{"id":"method-for-first-pass","label":"method-for-first-pass"},{"id":"method-for-second-pass","label":"method-for-second-pass"},{"id":"generate-block-processing-order","label":"generate-block-processing-order"},{"id":"generate-output-document","label":"generate-output-document"}],"edges":[{"from":"main","to":"imports"},{"from":"main","to":"global-declerations"},{"from":"main","to":"utility-functions"},{"from":"main","to":"annotation-declerations"},{"from":"main","to":"generate-document-object"},{"from":"main","to":"generate-output-document"},{"from":"main-program","to":"main"},{"from":"program-for-testing","to":"main"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks"},{"from":"utility-functions","to":"method-to-generate-random-integer"},{"from":"utility-functions","to":"method-to-print-an-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-processing-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph"},{"from":"utility-functions","to":"method-to-hash-block-name"},{"from":"generate-document-object","to":"method-for-first-pass"},{"from":"generate-document-object","to":"method-for-second-pass"},{"from":"generate-document-object","to":"generate-block-processing-order"}],"options":{"edges":{"arrows":"to"}}}
+              const container0 = document.getElementById('graph0')
+              const data0 = {
+                nodes: new vis.DataSet(dataForViz0.nodes),
+                edges: new vis.DataSet(dataForViz0.edges)
+              }
+              let network0 = new vis.Network(container0, data0, {"edges":{"arrows":"to"}});
+            </script>
+            <h2> #2. DFS Forest</h2>
+            <div class="graph" id="graph1"></div>
+            <details><summary>GraphData</summary><pre>{
+  "vertices": {
+    "21289": {
+      "label": "21289 (d=1,f=2)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 1,
+        "f": 2,
+        "degree": 0
+      }
+    },
+    "24126": {
+      "label": "24126 (d=3,f=4)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 3,
+        "f": 4,
+        "degree": 0
+      }
+    },
+    "25728": {
+      "label": "25728 (d=5,f=6)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 5,
+        "f": 6,
+        "degree": 0
+      }
+    },
+    "31425": {
+      "label": "31425 (d=7,f=8)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 7,
+        "f": 8,
+        "degree": 0
+      }
+    },
+    "33675": {
+      "label": "33675 (d=9,f=10)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 9,
+        "f": 10,
+        "degree": 0
+      }
+    },
+    "48292": {
+      "label": "48292 (d=11,f=12)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 11,
+        "f": 12,
+        "degree": 0
+      }
+    },
+    "50931": {
+      "label": "50931 (d=13,f=14)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 13,
+        "f": 14,
+        "degree": 0
+      }
+    },
+    "54152": {
+      "label": "54152 (d=15,f=16)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 15,
+        "f": 16,
+        "degree": 0
+      }
+    },
+    "58004": {
+      "label": "58004 (d=17,f=18)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 17,
+        "f": 18,
+        "degree": 0
+      }
+    },
+    "64105": {
+      "label": "64105 (d=19,f=20)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 19,
+        "f": 20,
+        "degree": 0
+      }
+    },
+    "64665": {
+      "label": "64665 (d=21,f=22)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 21,
+        "f": 22,
+        "degree": 0
+      }
+    },
+    "67812": {
+      "label": "67812 (d=23,f=24)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 23,
+        "f": 24,
+        "degree": 0
+      }
+    },
+    "71338": {
+      "label": "71338 (d=25,f=26)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 25,
+        "f": 26,
+        "degree": 0
+      }
+    },
+    "72515": {
+      "label": "72515 (d=27,f=28)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 27,
+        "f": 28,
+        "degree": 0
+      }
+    },
+    "84919": {
+      "label": "84919 (d=29,f=30)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 29,
+        "f": 30,
+        "degree": 0
+      }
+    },
+    "85419": {
+      "label": "85419 (d=31,f=32)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 31,
+        "f": 32,
+        "degree": 0
+      }
+    },
+    "92917": {
+      "label": "92917 (d=33,f=34)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 33,
+        "f": 34,
+        "degree": 0
+      }
+    },
+    "97902": {
+      "label": "97902 (d=35,f=36)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 35,
+        "f": 36,
+        "degree": 0
+      }
+    },
+    "main": {
+      "label": "main (d=37,f=68)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 37,
+        "f": 68,
+        "degree": 6
+      }
+    },
+    "main-program": {
+      "label": "main-program (d=69,f=70)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 69,
+        "f": 70,
+        "degree": 1
+      }
+    },
+    "program-for-testing": {
+      "label": "program-for-testing (d=71,f=72)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 71,
+        "f": 72,
+        "degree": 1
+      }
+    },
+    "imports": {
+      "label": "imports (d=38,f=39)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 38,
+        "f": 39,
+        "degree": 0
+      }
+    },
+    "doc-conventions": {
+      "label": "doc-conventions (d=73,f=74)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 73,
+        "f": 74,
+        "degree": 0
+      }
+    },
+    "utility-functions": {
+      "label": "utility-functions (d=42,f=55)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 42,
+        "f": 55,
+        "degree": 6
+      }
+    },
+    "global-declerations": {
+      "label": "global-declerations (d=40,f=41)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 40,
+        "f": 41,
+        "degree": 0
+      }
+    },
+    "method-to-split-doc-into-blocks": {
+      "label": "method-to-split-doc-into-blocks (d=43,f=44)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 43,
+        "f": 44,
+        "degree": 0
+      }
+    },
+    "method-to-generate-random-integer": {
+      "label": "method-to-generate-random-integer (d=45,f=46)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 45,
+        "f": 46,
+        "degree": 0
+      }
+    },
+    "method-to-print-an-object": {
+      "label": "method-to-print-an-object (d=47,f=48)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 47,
+        "f": 48,
+        "degree": 0
+      }
+    },
+    "method-to-generate-blank-block-processing-object": {
+      "label": "method-to-generate-blank-block-processing-object (d=49,f=50)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 49,
+        "f": 50,
+        "degree": 0
+      }
+    },
+    "method-to-generate-blank-block-dependency-graph": {
+      "label": "method-to-generate-blank-block-dependency-graph (d=51,f=52)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 51,
+        "f": 52,
+        "degree": 0
+      }
+    },
+    "method-to-hash-block-name": {
+      "label": "method-to-hash-block-name (d=53,f=54)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 53,
+        "f": 54,
+        "degree": 0
+      }
+    },
+    "annotation-declerations": {
+      "label": "annotation-declerations (d=56,f=57)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 56,
+        "f": 57,
+        "degree": 0
+      }
+    },
+    "generate-document-object": {
+      "label": "generate-document-object (d=58,f=65)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 58,
+        "f": 65,
+        "degree": 3
+      }
+    },
+    "method-for-first-pass": {
+      "label": "method-for-first-pass (d=59,f=60)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 59,
+        "f": 60,
+        "degree": 0
+      }
+    },
+    "method-for-second-pass": {
+      "label": "method-for-second-pass (d=61,f=62)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 61,
+        "f": 62,
+        "degree": 0
+      }
+    },
+    "generate-block-processing-order": {
+      "label": "generate-block-processing-order (d=63,f=64)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 63,
+        "f": 64,
+        "degree": 0
+      }
+    },
+    "generate-output-document": {
+      "label": "generate-output-document (d=66,f=67)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 66,
+        "f": 67,
+        "degree": 0
+      }
+    }
+  },
+  "edges": [
+    {
+      "v1": "main",
+      "v2": "imports",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "main",
+      "v2": "utility-functions",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "main",
+      "v2": "global-declerations",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-split-doc-into-blocks",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-generate-random-integer",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-print-an-object",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-generate-blank-block-processing-object",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-generate-blank-block-dependency-graph",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-hash-block-name",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "main",
+      "v2": "annotation-declerations",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "main",
+      "v2": "generate-document-object",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "generate-document-object",
+      "v2": "method-for-first-pass",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "generate-document-object",
+      "v2": "method-for-second-pass",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "generate-document-object",
+      "v2": "generate-block-processing-order",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "main",
+      "v2": "generate-output-document",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "main-program",
+      "v2": "main",
+      "weight": "",
+      "label": "cross-edge",
+      "temp": {
+        "color": "violet"
+      }
+    },
+    {
+      "v1": "program-for-testing",
+      "v2": "main",
+      "weight": "",
+      "label": "cross-edge",
+      "temp": {
+        "color": "violet"
+      }
+    }
+  ],
+  "metadata": {
+    "title": "DFS Forest",
+    "hasLoops": false,
+    "hasEdgeWeights": false,
+    "hasDirectedEdges": true,
+    "isSimple": true
+  },
+  "options": {
+    "defaultNewEdgeLabel": "",
+    "defaultNewVertexLabel": "",
+    "defaultNewVertexWeight": "",
+    "defaultNewEdgeWeight": "",
+    "addBlankVertex": true
+  }
+}</pre></details>
+            <script>
+              let dataForViz1 = {"nodes":[{"id":"21289","label":"21289 (d=1,f=2)"},{"id":"24126","label":"24126 (d=3,f=4)"},{"id":"25728","label":"25728 (d=5,f=6)"},{"id":"31425","label":"31425 (d=7,f=8)"},{"id":"33675","label":"33675 (d=9,f=10)"},{"id":"48292","label":"48292 (d=11,f=12)"},{"id":"50931","label":"50931 (d=13,f=14)"},{"id":"54152","label":"54152 (d=15,f=16)"},{"id":"58004","label":"58004 (d=17,f=18)"},{"id":"64105","label":"64105 (d=19,f=20)"},{"id":"64665","label":"64665 (d=21,f=22)"},{"id":"67812","label":"67812 (d=23,f=24)"},{"id":"71338","label":"71338 (d=25,f=26)"},{"id":"72515","label":"72515 (d=27,f=28)"},{"id":"84919","label":"84919 (d=29,f=30)"},{"id":"85419","label":"85419 (d=31,f=32)"},{"id":"92917","label":"92917 (d=33,f=34)"},{"id":"97902","label":"97902 (d=35,f=36)"},{"id":"main","label":"main (d=37,f=68)"},{"id":"main-program","label":"main-program (d=69,f=70)"},{"id":"program-for-testing","label":"program-for-testing (d=71,f=72)"},{"id":"imports","label":"imports (d=38,f=39)"},{"id":"doc-conventions","label":"doc-conventions (d=73,f=74)"},{"id":"utility-functions","label":"utility-functions (d=42,f=55)"},{"id":"global-declerations","label":"global-declerations (d=40,f=41)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=43,f=44)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=45,f=46)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=47,f=48)"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object (d=49,f=50)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=51,f=52)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=53,f=54)"},{"id":"annotation-declerations","label":"annotation-declerations (d=56,f=57)"},{"id":"generate-document-object","label":"generate-document-object (d=58,f=65)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=59,f=60)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=61,f=62)"},{"id":"generate-block-processing-order","label":"generate-block-processing-order (d=63,f=64)"},{"id":"generate-output-document","label":"generate-output-document (d=66,f=67)"}],"edges":[{"from":"main","to":"imports","color":"green","label":"tree-edge"},{"from":"main","to":"utility-functions","color":"green","label":"tree-edge"},{"from":"main","to":"global-declerations","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-random-integer","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-print-an-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-processing-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-hash-block-name","color":"green","label":"tree-edge"},{"from":"main","to":"annotation-declerations","color":"green","label":"tree-edge"},{"from":"main","to":"generate-document-object","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-first-pass","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-second-pass","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"generate-block-processing-order","color":"green","label":"tree-edge"},{"from":"main","to":"generate-output-document","color":"green","label":"tree-edge"},{"from":"main-program","to":"main","color":"violet","label":"cross-edge"},{"from":"program-for-testing","to":"main","color":"violet","label":"cross-edge"}],"options":{"edges":{"arrows":"to"}}}
+              const container1 = document.getElementById('graph1')
+              const data1 = {
+                nodes: new vis.DataSet(dataForViz1.nodes),
+                edges: new vis.DataSet(dataForViz1.edges)
+              }
+              let network1 = new vis.Network(container1, data1, {"edges":{"arrows":"to"}});
+            </script>
+            <h2> #3. Topological sorting</h2>
+            <div class="graph" id="graph2"></div>
+            <details><summary>GraphData</summary><pre>{
+  "vertices": {
+    "21289": {
+      "label": "21289 (d=1,f=2)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 1,
+        "f": 2,
+        "degree": 0
+      }
+    },
+    "24126": {
+      "label": "24126 (d=3,f=4)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 3,
+        "f": 4,
+        "degree": 0
+      }
+    },
+    "25728": {
+      "label": "25728 (d=5,f=6)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 5,
+        "f": 6,
+        "degree": 0
+      }
+    },
+    "31425": {
+      "label": "31425 (d=7,f=8)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 7,
+        "f": 8,
+        "degree": 0
+      }
+    },
+    "33675": {
+      "label": "33675 (d=9,f=10)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 9,
+        "f": 10,
+        "degree": 0
+      }
+    },
+    "48292": {
+      "label": "48292 (d=11,f=12)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 11,
+        "f": 12,
+        "degree": 0
+      }
+    },
+    "50931": {
+      "label": "50931 (d=13,f=14)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 13,
+        "f": 14,
+        "degree": 0
+      }
+    },
+    "54152": {
+      "label": "54152 (d=15,f=16)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 15,
+        "f": 16,
+        "degree": 0
+      }
+    },
+    "58004": {
+      "label": "58004 (d=17,f=18)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 17,
+        "f": 18,
+        "degree": 0
+      }
+    },
+    "64105": {
+      "label": "64105 (d=19,f=20)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 19,
+        "f": 20,
+        "degree": 0
+      }
+    },
+    "64665": {
+      "label": "64665 (d=21,f=22)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 21,
+        "f": 22,
+        "degree": 0
+      }
+    },
+    "67812": {
+      "label": "67812 (d=23,f=24)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 23,
+        "f": 24,
+        "degree": 0
+      }
+    },
+    "71338": {
+      "label": "71338 (d=25,f=26)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 25,
+        "f": 26,
+        "degree": 0
+      }
+    },
+    "72515": {
+      "label": "72515 (d=27,f=28)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 27,
+        "f": 28,
+        "degree": 0
+      }
+    },
+    "84919": {
+      "label": "84919 (d=29,f=30)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 29,
+        "f": 30,
+        "degree": 0
+      }
+    },
+    "85419": {
+      "label": "85419 (d=31,f=32)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 31,
+        "f": 32,
+        "degree": 0
+      }
+    },
+    "92917": {
+      "label": "92917 (d=33,f=34)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 33,
+        "f": 34,
+        "degree": 0
+      }
+    },
+    "97902": {
+      "label": "97902 (d=35,f=36)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 35,
+        "f": 36,
+        "degree": 0
+      }
+    },
+    "main": {
+      "label": "main (d=37,f=68)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 37,
+        "f": 68,
+        "degree": 6
+      }
+    },
+    "main-program": {
+      "label": "main-program (d=69,f=70)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 69,
+        "f": 70,
+        "degree": 1
+      }
+    },
+    "program-for-testing": {
+      "label": "program-for-testing (d=71,f=72)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 71,
+        "f": 72,
+        "degree": 1
+      }
+    },
+    "imports": {
+      "label": "imports (d=38,f=39)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 38,
+        "f": 39,
+        "degree": 0
+      }
+    },
+    "doc-conventions": {
+      "label": "doc-conventions (d=73,f=74)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 73,
+        "f": 74,
+        "degree": 0
+      }
+    },
+    "utility-functions": {
+      "label": "utility-functions (d=42,f=55)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 42,
+        "f": 55,
+        "degree": 6
+      }
+    },
+    "global-declerations": {
+      "label": "global-declerations (d=40,f=41)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 40,
+        "f": 41,
+        "degree": 0
+      }
+    },
+    "method-to-split-doc-into-blocks": {
+      "label": "method-to-split-doc-into-blocks (d=43,f=44)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 43,
+        "f": 44,
+        "degree": 0
+      }
+    },
+    "method-to-generate-random-integer": {
+      "label": "method-to-generate-random-integer (d=45,f=46)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 45,
+        "f": 46,
+        "degree": 0
+      }
+    },
+    "method-to-print-an-object": {
+      "label": "method-to-print-an-object (d=47,f=48)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 47,
+        "f": 48,
+        "degree": 0
+      }
+    },
+    "method-to-generate-blank-block-processing-object": {
+      "label": "method-to-generate-blank-block-processing-object (d=49,f=50)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 49,
+        "f": 50,
+        "degree": 0
+      }
+    },
+    "method-to-generate-blank-block-dependency-graph": {
+      "label": "method-to-generate-blank-block-dependency-graph (d=51,f=52)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 51,
+        "f": 52,
+        "degree": 0
+      }
+    },
+    "method-to-hash-block-name": {
+      "label": "method-to-hash-block-name (d=53,f=54)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 53,
+        "f": 54,
+        "degree": 0
+      }
+    },
+    "annotation-declerations": {
+      "label": "annotation-declerations (d=56,f=57)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 56,
+        "f": 57,
+        "degree": 0
+      }
+    },
+    "generate-document-object": {
+      "label": "generate-document-object (d=58,f=65)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 58,
+        "f": 65,
+        "degree": 3
+      }
+    },
+    "method-for-first-pass": {
+      "label": "method-for-first-pass (d=59,f=60)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 59,
+        "f": 60,
+        "degree": 0
+      }
+    },
+    "method-for-second-pass": {
+      "label": "method-for-second-pass (d=61,f=62)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 61,
+        "f": 62,
+        "degree": 0
+      }
+    },
+    "generate-block-processing-order": {
+      "label": "generate-block-processing-order (d=63,f=64)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 63,
+        "f": 64,
+        "degree": 0
+      }
+    },
+    "generate-output-document": {
+      "label": "generate-output-document (d=66,f=67)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 66,
+        "f": 67,
+        "degree": 0
+      }
+    }
+  },
+  "edges": [
+    {
+      "v1": "21289",
+      "v2": "24126",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "24126",
+      "v2": "25728",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "25728",
+      "v2": "31425",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "31425",
+      "v2": "33675",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "33675",
+      "v2": "48292",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "48292",
+      "v2": "50931",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "50931",
+      "v2": "54152",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "54152",
+      "v2": "58004",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "58004",
+      "v2": "64105",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "64105",
+      "v2": "64665",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "64665",
+      "v2": "67812",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "67812",
+      "v2": "71338",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "71338",
+      "v2": "72515",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "72515",
+      "v2": "84919",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "84919",
+      "v2": "85419",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "85419",
+      "v2": "92917",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "92917",
+      "v2": "97902",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "97902",
+      "v2": "imports",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "imports",
+      "v2": "global-declerations",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "global-declerations",
+      "v2": "method-to-split-doc-into-blocks",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-to-split-doc-into-blocks",
+      "v2": "method-to-generate-random-integer",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-to-generate-random-integer",
+      "v2": "method-to-print-an-object",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-to-print-an-object",
+      "v2": "method-to-generate-blank-block-processing-object",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-to-generate-blank-block-processing-object",
+      "v2": "method-to-generate-blank-block-dependency-graph",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-to-generate-blank-block-dependency-graph",
+      "v2": "method-to-hash-block-name",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-to-hash-block-name",
+      "v2": "utility-functions",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "annotation-declerations",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "annotation-declerations",
+      "v2": "method-for-first-pass",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-for-first-pass",
+      "v2": "method-for-second-pass",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-for-second-pass",
+      "v2": "generate-block-processing-order",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "generate-block-processing-order",
+      "v2": "generate-document-object",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "generate-document-object",
+      "v2": "generate-output-document",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "generate-output-document",
+      "v2": "main",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "main",
+      "v2": "main-program",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "main-program",
+      "v2": "program-for-testing",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "program-for-testing",
+      "v2": "doc-conventions",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    }
+  ],
+  "metadata": {
+    "title": "Topological sorting",
+    "hasLoops": false,
+    "hasEdgeWeights": false,
+    "hasDirectedEdges": true,
+    "isSimple": true
+  },
+  "options": {
+    "defaultNewEdgeLabel": "",
+    "defaultNewVertexLabel": "",
+    "defaultNewVertexWeight": "",
+    "defaultNewEdgeWeight": "",
+    "addBlankVertex": true
+  }
+}</pre></details>
+            <script>
+              let dataForViz2 = {"nodes":[{"id":"21289","label":"21289 (d=1,f=2)"},{"id":"24126","label":"24126 (d=3,f=4)"},{"id":"25728","label":"25728 (d=5,f=6)"},{"id":"31425","label":"31425 (d=7,f=8)"},{"id":"33675","label":"33675 (d=9,f=10)"},{"id":"48292","label":"48292 (d=11,f=12)"},{"id":"50931","label":"50931 (d=13,f=14)"},{"id":"54152","label":"54152 (d=15,f=16)"},{"id":"58004","label":"58004 (d=17,f=18)"},{"id":"64105","label":"64105 (d=19,f=20)"},{"id":"64665","label":"64665 (d=21,f=22)"},{"id":"67812","label":"67812 (d=23,f=24)"},{"id":"71338","label":"71338 (d=25,f=26)"},{"id":"72515","label":"72515 (d=27,f=28)"},{"id":"84919","label":"84919 (d=29,f=30)"},{"id":"85419","label":"85419 (d=31,f=32)"},{"id":"92917","label":"92917 (d=33,f=34)"},{"id":"97902","label":"97902 (d=35,f=36)"},{"id":"main","label":"main (d=37,f=68)"},{"id":"main-program","label":"main-program (d=69,f=70)"},{"id":"program-for-testing","label":"program-for-testing (d=71,f=72)"},{"id":"imports","label":"imports (d=38,f=39)"},{"id":"doc-conventions","label":"doc-conventions (d=73,f=74)"},{"id":"utility-functions","label":"utility-functions (d=42,f=55)"},{"id":"global-declerations","label":"global-declerations (d=40,f=41)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=43,f=44)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=45,f=46)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=47,f=48)"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object (d=49,f=50)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=51,f=52)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=53,f=54)"},{"id":"annotation-declerations","label":"annotation-declerations (d=56,f=57)"},{"id":"generate-document-object","label":"generate-document-object (d=58,f=65)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=59,f=60)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=61,f=62)"},{"id":"generate-block-processing-order","label":"generate-block-processing-order (d=63,f=64)"},{"id":"generate-output-document","label":"generate-output-document (d=66,f=67)"}],"edges":[{"from":"21289","to":"24126"},{"from":"24126","to":"25728"},{"from":"25728","to":"31425"},{"from":"31425","to":"33675"},{"from":"33675","to":"48292"},{"from":"48292","to":"50931"},{"from":"50931","to":"54152"},{"from":"54152","to":"58004"},{"from":"58004","to":"64105"},{"from":"64105","to":"64665"},{"from":"64665","to":"67812"},{"from":"67812","to":"71338"},{"from":"71338","to":"72515"},{"from":"72515","to":"84919"},{"from":"84919","to":"85419"},{"from":"85419","to":"92917"},{"from":"92917","to":"97902"},{"from":"97902","to":"imports"},{"from":"imports","to":"global-declerations"},{"from":"global-declerations","to":"method-to-split-doc-into-blocks"},{"from":"method-to-split-doc-into-blocks","to":"method-to-generate-random-integer"},{"from":"method-to-generate-random-integer","to":"method-to-print-an-object"},{"from":"method-to-print-an-object","to":"method-to-generate-blank-block-processing-object"},{"from":"method-to-generate-blank-block-processing-object","to":"method-to-generate-blank-block-dependency-graph"},{"from":"method-to-generate-blank-block-dependency-graph","to":"method-to-hash-block-name"},{"from":"method-to-hash-block-name","to":"utility-functions"},{"from":"utility-functions","to":"annotation-declerations"},{"from":"annotation-declerations","to":"method-for-first-pass"},{"from":"method-for-first-pass","to":"method-for-second-pass"},{"from":"method-for-second-pass","to":"generate-block-processing-order"},{"from":"generate-block-processing-order","to":"generate-document-object"},{"from":"generate-document-object","to":"generate-output-document"},{"from":"generate-output-document","to":"main"},{"from":"main","to":"main-program"},{"from":"main-program","to":"program-for-testing"},{"from":"program-for-testing","to":"doc-conventions"}],"options":{"edges":{"arrows":"to"}}}
+              const container2 = document.getElementById('graph2')
+              const data2 = {
+                nodes: new vis.DataSet(dataForViz2.nodes),
+                edges: new vis.DataSet(dataForViz2.edges)
+              }
+              let network2 = new vis.Network(container2, data2, {"edges":{"arrows":"to"}});
+            </script>
+        </body></html> 
