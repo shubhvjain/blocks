@@ -1,8 +1,8 @@
-This program takes in annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 4 objects : 
-- the "blockContent" object which  contains the final values of all  the blocks 
+This program takes in annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 4 main objects (along with other useful objects about the doc) : 
+- "blockContent" object which  contains the final values of all  the blocks 
 - "blockDependencyGraph :  a directed acyclic graph which shows the relationships among the blocks 
 - "blockProcessingOrder" :  topological order in which the blocks must be processed to ensure that for all blocks, their dependencies are processed before it
-- "knowledgeGraph" : user defined graph, generated automatically
+- "knowledgeGraph" : graph that stores user defined relations between blocks, which are defined in the document using action annotations 
 
 Here is the main program that does that : 
 
@@ -111,7 +111,6 @@ The above can be understood more easily with some examples:
 (all the above produces the same output)
 - hash("+block name") = "block-name"
 
-
 Now, the most important part of the programs. The annotation declarations. 
 
 What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations makes the document more structured and provides a way to extract "knowledge" from the document which can be further processed.  
@@ -126,8 +125,10 @@ Each annotation type has a different delimiter within which they are "defined" i
 For each type of annotation, we need to specify a few things :
 - how to extract annotations from the block text ?
 - how generate a replacement text for a certain annotation ? (after an annotation is successfully processed, it can either be removed from the processed block text or replaced with some text or left unchanged)
+- how to initiate further processing of extracted annotations?
 
-Declaration annotation : 
+
+Here is the main object where all annotations are defined :
 
 .[Annotation declerations]
 const annotations = {
@@ -138,7 +139,7 @@ const annotations = {
 
 .[decleration annotation]
 declaration: {
-    extract:(text)=>{
+  extract:(text)=>{
       // all declarations are in the first annotation block.
       const tx = text.trim()
       const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
@@ -182,23 +183,36 @@ action: {
 
 action annotations allows one to do a lot of things. 
 
-How to specify : withing the "/[]" delimiter. one action per bracket. to define multiple actions, use multiple brackets
+How to specify them : withing the "/[]" delimiter. one action per bracket. to define multiple actions, use multiple brackets
 Each action has a format : "action-name : arguments". E.g. /[todo: do nothing.just a demo]
 
 here is a list of things that can be done using action annotations :
-- defining documnet related actions. when working actively on a document , you would want to add actions that you can take later. for instance editing a block later. 
+- defining documents related actions. when working actively on a document , you would want to add actions that you can take later. for instance editing a block later. 
 - relating the current block to some other block in the knowledge graph 
 - specify data type of a block
 - load another file in the document 
 - query and display part of knowledge graph
 - specify block format (e.g heading, section title etc...)
 
+A note on how to specify action annotations:
+Here are a few ways in which we can call a function in js:
+- fn(arg1,arg2) : positional arguments ; have to remember the position of each argument
+- fn(arg1=value1,arg2=value2) : arguments have names , their position can be changes ; more flexibilty
+- fn({arg1:val,arg2:val}): similar to last one. now the function has a single argumnet which is an object ; position also does not matter
+(in the last 2 we need to remember the names of arguments, which is better than remembering their position as in the first case)
+
+The question is how to specify actions arguments ?
+The format of specifying the action itself is fixed i.e. "action-name : arguments"
+In most cases there will be a single argument. like : "todo:this"
+But multiple arguments will be required. like when specifying the data type of a block as a resource, we need to specify the location of the resource as well. 
 
 
-Now we need to generate the document object. 
-The first step is to actually generate the blocks by  splitting the document. 
+Now we need to the actual generation of the document object. 
+The first step is to actually generating the blocks by  splitting the document. 
 we must also initialise:
-- the document object. this consists of an array of "blocks" which holds the blocks in the order in which they were declared in the document  and a blank object "data". data will contain all processed block data. the key will be each unique block in the document and it values will be all the data related to it. this may include the raw text, processed text, annotations used in the text etc...
+- the document object. this consists of :
+  - an array of "blocks" which holds the blocks in the order in which they were declared in the document
+  - a blank object "data". data will contain all processed block data. the key will be  unique block in the document and it value will be all the data related to that block. this may include the raw text, processed text, annotations used in the text etc...
 - the block dependency graph. blocks once declared (via deceleration annotation) can be used in other blocks. this means some blocks will depend on other blocks for their full content. this means we have to make sure that there are no cyclic dependencies among the blocks and a block is processed after all it's dependent blocks are processed. this is ensured if the block dependency graph forms a directed acyclic graph. the block dependency graph captures the dependencies of one block over other. 
 
 consider the following example :
@@ -226,6 +240,7 @@ once we have an array of blocks, we need to iterate through all the blocks to do
 .[Generate document object]
   >[Method for First pass]
   >[Method for Second pass] 
+  >[Method to process block data type]
   >[Method to generate block processing order]
   const generateDocObject = (doc,options={})=>{
     try{
@@ -272,7 +287,7 @@ if(d.blocks.indexOf(newBlock.id)==-1){
   g = graph.addVertex(g,{id:newBlock.id})
 }else{
   if(newBlock.isAppend){
-    d.data[newBlock.id]['text'] += " \n "+processedText
+    d.data[newBlock.id]['text'] += processedText
     d.data[newBlock.id]['rawText'].push({block,index})
   }
 }
@@ -309,6 +324,45 @@ const processBlocksInOrder = (docObj, vertexOrder) => {
 const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
 
 
+.[Method to process block data type]
+const dataType = {
+  "key-value":(blocktext)=>{},
+  "table":(blockText) => {},
+  "list":(blockText)=>{},
+  "resource":(blockText)=>{},
+  "code":(blockText)=>{},
+}
+
+Processing data types : 
+
+Key value store :
+.[key value store example] /[type:key-value] This is the title of the key value store
+- key1 : value of key 1
+- key2: value of key2
+
+List :
+.[list example] /[type:list] this is similar to key value pair
+- item 1 
+- item 2
+- item 3
+- at this point i will just have the single level of list 
+
+Table:
+.[table example] /[type:table , cols:"col1,col2,col3" , spliter : ;]
+- row1-col1; row1-col2 ; row1-col3
+- row2-col1; row2-col2 ; row2-col3
+
+Resource: a block can also be an external resource 
+.[external resource] /[type:res loc="path/to/file"]
+
+its usage: now we can access specific parts of a block in invocation annotations. For examples:
+- here is the value of the key named key1 in the block name "key value pair example" : >[key value pair example.key1]
+- here is value of 1st item in the list "list example" : >[list example.1]
+- here is the value from the 1st row and col1 from "table example" : >[table example.1.col1]
+
+resources can be used in many ways. the 3 most common types of resources will be : images, PDF documents, text files  
+- if it's a pdf file , one can refer to individual pages of the doc
+- if it's an image, one can refer to specific parts of the image
 
 Phew! the main part of the program is done! Now, given a document, we can generate a document Object for it which consists of blockContent, blockDependencyGraph, blockProcessingOrder and knowlegeGraph 
 Now we can foucs on generating outputs from this doucment. By utilizing all the objects generated for this document we can generate all sorts of documents. for instance we can save content of a certian block as a file. this block can be a fully functional program.
