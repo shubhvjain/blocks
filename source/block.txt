@@ -10,7 +10,6 @@ Here is the main program that does that :
   >[Imports]
   >[Global Declerations]
   >[Utility Functions]
-  >[Annotation Declerations]
   >[Generate document object]
   >[Generate output document]
 
@@ -59,8 +58,9 @@ So let's create a new global decleration for that
 .[+Doc conventions]
 - global decleration/variables names are in camel case and begins with upper case
 
-.[global declerations]
-const BlockSplitCharacter = "\n"
+.[Global declerations]
+  const BlockSplitCharacter = "\n"
+  >[Annotation declerations]
 
 .[Method to split Doc into blocks]
 const docToBlocks = (doc,splitter)=>{ return doc.split(splitter)}
@@ -140,7 +140,6 @@ const annotations = {
 .[decleration annotation]
 declaration: {
   extract:(text)=>{
-      // all declarations are in the first annotation block.
       const tx = text.trim()
       const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
       const parts = tx.match(theRegex)
@@ -156,6 +155,10 @@ declaration: {
       return text.replaceAll(theRegex,"")
     }
 }
+
+Declearations are enclosed within : ".[]".
+It must be specified at the beginning of the block.
+Valid character : all alphanumeric charaters and one symbol : dash ("-"). nothing else. see the method to hash block name function to see how a name is assigned to a block. 
 
 .[invocation annotation]
 invocation: {
@@ -203,11 +206,81 @@ Here are a few ways in which we can call a function in js:
 
 The question is how to specify actions arguments ?
 The format of specifying the action itself is fixed i.e. "action-name : arguments"
-In most cases there will be a single argument. like : "todo:this"
-But multiple arguments will be required. like when specifying the data type of a block as a resource, we need to specify the location of the resource as well. 
+In most cases there will be a single argument. like : "todo:this" where "this" will the value of the argument named "text". this is the default functioning. if the action has a single agrument then it will be named "text" by default.
+But some actions might require multiple arguments. for instance  when specifying the data type of a block as a resource, we also need to specify the location of the resource. 
+This makes life simple: if an action has a single argument, no argument name required
+In case of actions with multiple arguments, the first argument is always named "text". all other arguments must be named. 
+What will be the format of naming them ? : "action-name: text, arg-name='arg-value', arg-name2='arg-value2' " (except for the first argument, all other arguments are within single quotes)
+As an example : /[type:resource, location='/path/to/file.pdf' down='true']
 
+Here's how to process various actions 
 
-Now we need to the actual generation of the document object. 
+.[action declerations]
+const parseActionArguments = (argumentText)=>{
+}
+const actions = {}
+
+including it in the global declerations:
+
+.[+global declerations]
+  >[action declerations]
+
+Now we must also talk about processing various datatypes available : 
+
+.[data type processing decleration]
+const dataType = {
+  "key-value":(blocktext)=>{},
+  "table":(blockText) => {},
+  "list":(blockText)=>{},
+  "resource":(blockText)=>{},
+  "code":(blockText)=>{},
+  "defualt":(blockText)=>{}
+}
+
+including it in the global declerations:
+
+.[+global declerations]
+  >[data type processing decleration]
+
+Processing data types : 
+
+Default:
+.[default text block 1] this is a block content. plain , simple text
+
+.[default mutliline block] this is the title of the block
+this block is multiline.
+the first line in a multiline block is always it's title. this is particularly useful when creating knowledge graphs.
+
+Key value store :
+.[key value store example] /[type:key-value] This is the title of the key value store
+- key1 : value of key 1
+- key2: value of key2
+
+List :
+.[list example] /[type:list] this is similar to key value pair
+- item 1 
+- item 2
+- item 3
+- at this point i will just have the single level of list 
+
+Table:
+.[table example] /[type:table , cols='col1,col2,col3' , spliter=';']
+- row1-col1; row1-col2 ; row1-col3
+- row2-col1; row2-col2 ; row2-col3
+
+Resource: a block can also be an external resource 
+.[external resource] /[type:res loc="path/to/file"]
+
+its usage: now we can access specific parts of a block in invocation annotations. For examples:
+- here is the value of the key named key1 in the block name "key value pair example" : >[key value pair example.key1]
+- here is value of 1st item in the list "list example" : >[list example.1]
+- here is the value from the 1st row and col1 from "table example" : >[table example.1.col1]
+
+resources can be used in many ways. the 3 most common types of resources will be : images, PDF documents, text files  
+- if it's a pdf file , one can refer to individual pages of the doc
+- if it's an image, one can refer to specific parts of the image
+
+Now we need to  generate of the document object. 
 The first step is to actually generating the blocks by  splitting the document. 
 we must also initialise:
 - the document object. this consists of :
@@ -237,18 +310,24 @@ once we have an array of blocks, we need to iterate through all the blocks to do
 
 - three : process invocation annotation and build the dependency graph along the way. the final processing of blocks will take place only after the complete depnencey graph is checked for cycle. this means we would need another iteration over the blocks to finally process them. thus there will be 2 passes over the block: the first pass (which is currenlty being described here) and the second pass that take places only after dependenies are checked. 
 
+the second pass through the blocks :
+in the second iteration, we assume that we have an order in which all the blocks of the document must be processed.
+What does that processing looks like:
+Replacing all invocation annotations with actual block text. 
+Replacing all action annotations with appropriate values (some needs to be removed, some needs to be replaced with a string)
+
+
 .[Generate document object]
   >[Method for First pass]
   >[Method for Second pass] 
-  >[Method to process block data type]
   >[Method to generate block processing order]
   const generateDocObject = (doc,options={})=>{
     try{
       const blocks = docToBlocks(doc,"\n\n")
       let obj = firstPass(blocks)
       let blockContent = obj.d
-      let blockDepGraph = obj.g
-      let order =  generateProcessingOrder(blockDepGraph)
+      let blockDependencyGraph = obj.g
+      let order =  generateProcessingOrder(blockDependencyGraph)
       blockContent = processBlocksInOrder(blockContent,order.vertexInOrder)
       return {blockContent, blockDependencyGraph, ...order }
     }catch(error){console.log(error)}
@@ -260,7 +339,7 @@ const firstPass = (blocks) => {
   blocks.map((block,index)=>{
     if(block){
         >[process decleration annotations in the block]
-        >[process assignment annotations in the block]
+        >[process invocation annotations in the block]
     }
   })
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
@@ -292,8 +371,8 @@ if(d.blocks.indexOf(newBlock.id)==-1){
   }
 }
 
-.[process assignment annotations in the block]
-const allAsmts = annotations.assignment.extract(block)
+.[process invocation annotations in the block]
+const allAsmts = annotations.invocation.extract(block)
 if(!d.data[newBlock.id]['annotations']['a']['valid']){
   d.data[newBlock.id]['annotations']['a']['valid'] = []
 }
@@ -324,45 +403,6 @@ const processBlocksInOrder = (docObj, vertexOrder) => {
 const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
 
 
-.[Method to process block data type]
-const dataType = {
-  "key-value":(blocktext)=>{},
-  "table":(blockText) => {},
-  "list":(blockText)=>{},
-  "resource":(blockText)=>{},
-  "code":(blockText)=>{},
-}
-
-Processing data types : 
-
-Key value store :
-.[key value store example] /[type:key-value] This is the title of the key value store
-- key1 : value of key 1
-- key2: value of key2
-
-List :
-.[list example] /[type:list] this is similar to key value pair
-- item 1 
-- item 2
-- item 3
-- at this point i will just have the single level of list 
-
-Table:
-.[table example] /[type:table , cols:"col1,col2,col3" , spliter : ;]
-- row1-col1; row1-col2 ; row1-col3
-- row2-col1; row2-col2 ; row2-col3
-
-Resource: a block can also be an external resource 
-.[external resource] /[type:res loc="path/to/file"]
-
-its usage: now we can access specific parts of a block in invocation annotations. For examples:
-- here is the value of the key named key1 in the block name "key value pair example" : >[key value pair example.key1]
-- here is value of 1st item in the list "list example" : >[list example.1]
-- here is the value from the 1st row and col1 from "table example" : >[table example.1.col1]
-
-resources can be used in many ways. the 3 most common types of resources will be : images, PDF documents, text files  
-- if it's a pdf file , one can refer to individual pages of the doc
-- if it's an image, one can refer to specific parts of the image
 
 Phew! the main part of the program is done! Now, given a document, we can generate a document Object for it which consists of blockContent, blockDependencyGraph, blockProcessingOrder and knowlegeGraph 
 Now we can foucs on generating outputs from this doucment. By utilizing all the objects generated for this document we can generate all sorts of documents. for instance we can save content of a certian block as a file. this block can be a fully functional program.
@@ -379,7 +419,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
     },
     "explorer": async ()=>{
       const Document = generateDocObject(doc,options) 
-      const allGraphs = [ Document.blockDepGraph, Document.dfsTree, Document.tsTree ]
+      const allGraphs = [ Document.blockDependencyGraph, Document.dfsTree, Document.tsTree ]
       const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
       const sanitizeArrows = (text)=>{
         let sText = text.replaceAll("<","&lt;").replaceAll(">","&gt;")
