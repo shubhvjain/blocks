@@ -19,6 +19,11 @@ const getBlankDepGraph = ()=>{
   return {...newG}
 }
   
+const getBlankKnowledgeGraph = ()=>{
+  let newG = graph.createGraph({ title:"Doc knowledge graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
+  return {...newG}
+}
+  
 const hashBlockId = (text)=>{
   let txt = text.trim()
   let isAppend = false
@@ -32,7 +37,8 @@ const hashBlockId = (text)=>{
 }
   
 const annotations = {
-  declaration: {
+  
+declaration: {
     extract:(text)=>{
       // all declarations are in the first annotation block.
       const tx = text.trim()
@@ -49,8 +55,9 @@ const annotations = {
       const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
       return text.replaceAll(theRegex,"")
     }
-  },
-  assignment: {
+},
+  
+assignment: {
     extract: (text) =>{
       const txt = text.trim()
       const theRegex = /\>\[([\w\s\-]+?)\]/gm
@@ -65,43 +72,51 @@ const annotations = {
       }
       return asmts
     }
+  },
+  
+action: {
+  extract: (text) => {
   }
+}
 }
   
   
 const processBlocks = (blocks) => {
+  
   let d = getBlankDocObj()
   let g = getBlankDepGraph()
   let edgesToAdd = []
   blocks.map((block,index)=>{
     if(block){
-        const newBlock = annotations.declaration.extract(block)
-        const processedText = annotations.declaration.generateText(block)
-        if(d.blocks.indexOf(newBlock.id)==-1){
-          d.blocks.push(newBlock.id)
-          let data = {
-            rawText: [{block,index}],
-            text:processedText,
-            annotations: { d:{index, ...newBlock}, a:{}}
-          }
-          d.data[newBlock.id] = data
-          g = graph.addVertex(g,{id:newBlock.id})
-        }else{
-          if(newBlock.isAppend){
-            d.data[newBlock.id]['text'] += " \n "+processedText
-            d.data[newBlock.id]['rawText'].push({block,index})
-          }
-        }
-        const allAsmts = annotations.assignment.extract(block)
-        if(!d.data[newBlock.id]['annotations']['a']['valid']){
-          d.data[newBlock.id]['annotations']['a']['valid'] = []
-        }
-        allAsmts.map(itm=>{
-          if(itm.id != newBlock.id){
-            d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
-            edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
-          }
-        })
+        
+const newBlock = annotations.declaration.extract(block)
+const processedText = annotations.declaration.generateText(block)
+if(d.blocks.indexOf(newBlock.id)==-1){
+  d.blocks.push(newBlock.id)
+  let data = {
+    rawText: [{block,index}],
+    text:processedText,
+    annotations: { d:{index, ...newBlock}, a:{}}
+  }
+  d.data[newBlock.id] = data
+  g = graph.addVertex(g,{id:newBlock.id})
+}else{
+  if(newBlock.isAppend){
+    d.data[newBlock.id]['text'] += " \n "+processedText
+    d.data[newBlock.id]['rawText'].push({block,index})
+  }
+}
+        
+const allAsmts = annotations.assignment.extract(block)
+if(!d.data[newBlock.id]['annotations']['a']['valid']){
+  d.data[newBlock.id]['annotations']['a']['valid'] = []
+}
+allAsmts.map(itm=>{
+  if(itm.id != newBlock.id){
+    d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
+    edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
+  }
+})
     }
   })
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
@@ -136,6 +151,7 @@ const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(block
     }catch(error){console.log(error)}
   } 
   
+
 const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
   if(!options.type){throw new Error("No doc type specified")}
   const docTypes = {

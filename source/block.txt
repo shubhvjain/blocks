@@ -1,7 +1,7 @@
 This program takes in annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 4 objects : 
-- the "processedBlock" object which  contains the final values of all  the blocks 
-- "blockDepGraph :  a directed acyclic graph which shows the relationships among the blocks 
-- "processingOrder" :  topological order in which the blocks must be processed to ensure that for all blocks, their dependencies are processed before it
+- the "blockContent" object which  contains the final values of all  the blocks 
+- "blockDependencyGraph :  a directed acyclic graph which shows the relationships among the blocks 
+- "blockProcessingOrder" :  topological order in which the blocks must be processed to ensure that for all blocks, their dependencies are processed before it
 - "knowledgeGraph" : user defined graph, generated automatically
 
 Here is the main program that does that : 
@@ -16,14 +16,13 @@ Here is the main program that does that :
 
 What will this "Main" program generate ?
 A Javascript module that returns 2 main functionalities : "generateDocObject" and "generateOutputDoc".
-However, I still need to test all other methods. So I will create 2 different files for the program : one is the actual program file that exports just the 2 main functions. Another file where all the functionalities are exported to thorughly test all parts of the program.
+However, I still need to test all other methods. So I will create 2 different files for the program : one is the actual program file that exports just the 2 main functions. Another file where all the functionalities are exported to thoroughly test all parts of the program.
 
 Here's the main program file :
 
 .[Main Program]
   >[Main]
   module.exports = { generateDocObject, generateOutputDoc }
-
 
 And here's the test program file:
 
@@ -33,7 +32,7 @@ And here's the test program file:
 
 Moving on to the parts of the program :
 
-The program depends on the Graph library I created as a seperate project. See github.com/shubhvjain/graphs. I am assuming the lastest version of the graph program is available with the name "graph.js" in the same folder which is imported here:
+The program depends on the Graph library I created as a separate project. See github.com/shubhvjain/graphs. I am assuming the latest version of the graph program is available with the name "graph.js" in the same folder which is imported here:
 
 .[Imports]
 const graph = require('./graph')
@@ -47,8 +46,9 @@ We require several utility functions.
   >[Method to split doc into blocks]
   >[Method to generate random integer]  
   >[method to print an object]
-  >[method to generate blank block processing object]
+  >[method to generate blank block content object]
   >[method to generate blank block dependency graph]
+  >[method to generate blank knowledge graph]
   >[method to hash block name]
 
 Blocks are the smallest units of processing. So we must extract all blocks from a document. 
@@ -75,12 +75,18 @@ const print = (obj,indent=1)=>{console.log(JSON.stringify(obj,null,indent))}
 
 this utility function prints out an object. for debugging purpose
 
-.[method to generate blank block processing object]
+.[method to generate blank block content object]
 const getBlankDocObj = ()=>{ return { blocks:[], data:{}}}
 
 .[method to generate blank block dependency graph]
 const getBlankDepGraph = ()=>{
   let newG = graph.createGraph({ title:"Block Dependency graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
+  return {...newG}
+}
+
+.[method to generate blank knowledge graph]
+const getBlankKnowledgeGraph = ()=>{
+  let newG = graph.createGraph({ title:"Doc knowledge graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
   return {...newG}
 }
 
@@ -106,13 +112,13 @@ The above can be understood more easily with some examples:
 - hash("+block name") = "block-name"
 
 
-Now, the most important part of the programs. The annotation declerations. 
+Now, the most important part of the programs. The annotation declarations. 
 
-What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations makes the document more strucuted and provides a way to extract "knowledge" from the document which can be further processed.  
+What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations makes the document more structured and provides a way to extract "knowledge" from the document which can be further processed.  
 
 There are 3 types of annotations :
-- decleration : this will be used to declare blocks or give names to blocks
-- assignment : this will be used to include the content of one blocks in another block (or to declare a block dependency)
+- declaration : this will be used to declare blocks or give names to blocks
+- invocation : this will be used to include the content of one blocks in another block (or to declare a block dependency)
 - action : to declare metadata and actions. these annotations are processed within a "context" which is determined by the locations of where it is used
 
 Each annotation type has a different delimiter within which they are "defined" in a document
@@ -121,11 +127,17 @@ For each type of annotation, we need to specify a few things :
 - how to extract annotations from the block text ?
 - how generate a replacement text for a certain annotation ? (after an annotation is successfully processed, it can either be removed from the processed block text or replaced with some text or left unchanged)
 
-Decleration annotation : 
+Declaration annotation : 
 
 .[Annotation declerations]
 const annotations = {
-  declaration: {
+  >[decleration annotation],
+  >[invocation annotation],
+  >[action annotation]
+}
+
+.[decleration annotation]
+declaration: {
     extract:(text)=>{
       // all declarations are in the first annotation block.
       const tx = text.trim()
@@ -142,8 +154,10 @@ const annotations = {
       const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
       return text.replaceAll(theRegex,"")
     }
-  },
-  assignment: {
+}
+
+.[invocation annotation]
+invocation: {
     extract: (text) =>{
       const txt = text.trim()
       const theRegex = /\>\[([\w\s\-]+?)\]/gm
@@ -158,64 +172,122 @@ const annotations = {
       }
       return asmts
     }
+}
+
+.[action annotation]
+action: {
+  extract: (text) => {
   }
 }
+
+action annotations allows one to do a lot of things. 
+
+How to specify : withing the "/[]" delimiter. one action per bracket. to define multiple actions, use multiple brackets
+Each action has a format : "action-name : arguments". E.g. /[todo: do nothing.just a demo]
+
+here is a list of things that can be done using action annotations :
+- defining documnet related actions. when working actively on a document , you would want to add actions that you can take later. for instance editing a block later. 
+- relating the current block to some other block in the knowledge graph 
+- specify data type of a block
+- load another file in the document 
+- query and display part of knowledge graph
+- specify block format (e.g heading, section title etc...)
+
+
+
+Now we need to generate the document object. 
+The first step is to actually generate the blocks by  splitting the document. 
+we must also initialise:
+- the document object. this consists of an array of "blocks" which holds the blocks in the order in which they were declared in the document  and a blank object "data". data will contain all processed block data. the key will be each unique block in the document and it values will be all the data related to it. this may include the raw text, processed text, annotations used in the text etc...
+- the block dependency graph. blocks once declared (via deceleration annotation) can be used in other blocks. this means some blocks will depend on other blocks for their full content. this means we have to make sure that there are no cyclic dependencies among the blocks and a block is processed after all it's dependent blocks are processed. this is ensured if the block dependency graph forms a directed acyclic graph. the block dependency graph captures the dependencies of one block over other. 
+
+consider the following example :
+block1 : some text
+block2 : some text + block 1
+here block2 is dependent on block1. in the dependency graph there will be a directed edge from block2 to block1 because block 2 depends on block1 for its content. thus block 1 must be processed first. 
+
+now consider 
+block1 : some text + block 2
+block 2: some text + block 3
+block 3 : some text + block 1
+the above blocks cannot be processed as there is a cyclic dependency between them. 
+
+once we have an array of blocks, we need to iterate through all the blocks to do a few things :
+- one : process decleration annotations
+  - determine the name of each blocks. 
+  - some blocks might be named using the declaration annotation. if not, they have to be assigned a unique block name.
+  - if block is being processed for the first time, we need to initialize the block in the blockContent object as well. 
+  - if the block is being appended, some additional processing needs to be done 
+
+- two : process block data. by default blocks are simple text. adding structure to document also means to be able to specify data in difftent formats with ease. the 2 most commonly used data structures are : dictionary and tables
+
+- three : process invocation annotation and build the dependency graph along the way. the final processing of blocks will take place only after the complete depnencey graph is checked for cycle. this means we would need another iteration over the blocks to finally process them. thus there will be 2 passes over the block: the first pass (which is currenlty being described here) and the second pass that take places only after dependenies are checked. 
 
 .[Generate document object]
   >[Method for First pass]
   >[Method for Second pass] 
-  >[Generate block processing order]
+  >[Method to generate block processing order]
   const generateDocObject = (doc,options={})=>{
     try{
       const blocks = docToBlocks(doc,"\n\n")
-      let obj = processBlocks(blocks)
-      let docObject = obj.d
+      let obj = firstPass(blocks)
+      let blockContent = obj.d
       let blockDepGraph = obj.g
       let order =  generateProcessingOrder(blockDepGraph)
-      docObject = processBlocksInOrder(docObject,order.vertexInOrder)
-      return {docObject, blockDepGraph, ...order }
+      blockContent = processBlocksInOrder(blockContent,order.vertexInOrder)
+      return {blockContent, blockDependencyGraph, ...order }
     }catch(error){console.log(error)}
   } 
 
 .[Method for First pass]
-const processBlocks = (blocks) => {
-  let d = getBlankDocObj()
-  let g = getBlankDepGraph()
-  let edgesToAdd = []
+const firstPass = (blocks) => {
+  >[initialize doc and graph]
   blocks.map((block,index)=>{
     if(block){
-        const newBlock = annotations.declaration.extract(block)
-        const processedText = annotations.declaration.generateText(block)
-        if(d.blocks.indexOf(newBlock.id)==-1){
-          d.blocks.push(newBlock.id)
-          let data = {
-            rawText: [{block,index}],
-            text:processedText,
-            annotations: { d:{index, ...newBlock}, a:{}}
-          }
-          d.data[newBlock.id] = data
-          g = graph.addVertex(g,{id:newBlock.id})
-        }else{
-          if(newBlock.isAppend){
-            d.data[newBlock.id]['text'] += " \n "+processedText
-            d.data[newBlock.id]['rawText'].push({block,index})
-          }
-        }
-        const allAsmts = annotations.assignment.extract(block)
-        if(!d.data[newBlock.id]['annotations']['a']['valid']){
-          d.data[newBlock.id]['annotations']['a']['valid'] = []
-        }
-        allAsmts.map(itm=>{
-          if(itm.id != newBlock.id){
-            d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
-            edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
-          }
-        })
+        >[process decleration annotations in the block]
+        >[process assignment annotations in the block]
     }
   })
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
   return {d,g}
 }
+
+.[initialize doc and graph]
+  let d = getBlankDocObj()
+  let g = getBlankDepGraph()
+  let kg = getBlankKnowledgeGraph()
+  let edgesToAdd = []
+
+.[process decleration annotations in the block]
+const newBlock = annotations.declaration.extract(block)
+const processedText = annotations.declaration.generateText(block)
+if(d.blocks.indexOf(newBlock.id)==-1){
+  d.blocks.push(newBlock.id)
+  let data = {
+    rawText: [{block,index}],
+    text:processedText,
+    annotations: { d:{index, ...newBlock}, a:{}}
+  }
+  d.data[newBlock.id] = data
+  g = graph.addVertex(g,{id:newBlock.id})
+}else{
+  if(newBlock.isAppend){
+    d.data[newBlock.id]['text'] += " \n "+processedText
+    d.data[newBlock.id]['rawText'].push({block,index})
+  }
+}
+
+.[process assignment annotations in the block]
+const allAsmts = annotations.assignment.extract(block)
+if(!d.data[newBlock.id]['annotations']['a']['valid']){
+  d.data[newBlock.id]['annotations']['a']['valid'] = []
+}
+allAsmts.map(itm=>{
+  if(itm.id != newBlock.id){
+    d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
+    edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
+  }
+})
 
 .[Method for Second pass]
 const processBlocksInOrder = (docObj, vertexOrder) => {
@@ -233,8 +305,14 @@ const processBlocksInOrder = (docObj, vertexOrder) => {
   return docObj
 }
 
-.[Generate Block processing order]
+.[Method to generate block processing order]
 const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
+
+
+
+Phew! the main part of the program is done! Now, given a document, we can generate a document Object for it which consists of blockContent, blockDependencyGraph, blockProcessingOrder and knowlegeGraph 
+Now we can foucs on generating outputs from this doucment. By utilizing all the objects generated for this document we can generate all sorts of documents. for instance we can save content of a certian block as a file. this block can be a fully functional program.
+We can also generate interactive HTML documents. 
 
 .[Generate output document]
 const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{

@@ -22,9 +22,9 @@
                     <div class="tab-content" id="pills-tabContent">
                       <div class="tab-pane fade show active" id="pills-source" role="tabpanel" aria-labelledby="pills-source-tab" tabindex="0">
                         <pre>This program takes in annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 4 objects : 
-- the "processedBlock" object which  contains the final values of all  the blocks 
-- "blockDepGraph :  a directed acyclic graph which shows the relationships among the blocks 
-- "processingOrder" :  topological order in which the blocks must be processed to ensure that for all blocks, their dependencies are processed before it
+- the "blockContent" object which  contains the final values of all  the blocks 
+- "blockDependencyGraph :  a directed acyclic graph which shows the relationships among the blocks 
+- "blockProcessingOrder" :  topological order in which the blocks must be processed to ensure that for all blocks, their dependencies are processed before it
 - "knowledgeGraph" : user defined graph, generated automatically
 
 Here is the main program that does that : 
@@ -39,14 +39,13 @@ Here is the main program that does that :
 
 What will this "Main" program generate ?
 A Javascript module that returns 2 main functionalities : "generateDocObject" and "generateOutputDoc".
-However, I still need to test all other methods. So I will create 2 different files for the program : one is the actual program file that exports just the 2 main functions. Another file where all the functionalities are exported to thorughly test all parts of the program.
+However, I still need to test all other methods. So I will create 2 different files for the program : one is the actual program file that exports just the 2 main functions. Another file where all the functionalities are exported to thoroughly test all parts of the program.
 
 Here's the main program file :
 
 .[Main Program]
   &gt;[Main]
   module.exports = { generateDocObject, generateOutputDoc }
-
 
 And here's the test program file:
 
@@ -56,7 +55,7 @@ And here's the test program file:
 
 Moving on to the parts of the program :
 
-The program depends on the Graph library I created as a seperate project. See github.com/shubhvjain/graphs. I am assuming the lastest version of the graph program is available with the name "graph.js" in the same folder which is imported here:
+The program depends on the Graph library I created as a separate project. See github.com/shubhvjain/graphs. I am assuming the latest version of the graph program is available with the name "graph.js" in the same folder which is imported here:
 
 .[Imports]
 const graph = require('./graph')
@@ -70,8 +69,9 @@ We require several utility functions.
   &gt;[Method to split doc into blocks]
   &gt;[Method to generate random integer]  
   &gt;[method to print an object]
-  &gt;[method to generate blank block processing object]
+  &gt;[method to generate blank block content object]
   &gt;[method to generate blank block dependency graph]
+  &gt;[method to generate blank knowledge graph]
   &gt;[method to hash block name]
 
 Blocks are the smallest units of processing. So we must extract all blocks from a document. 
@@ -98,12 +98,18 @@ const print = (obj,indent=1)=&gt;{console.log(JSON.stringify(obj,null,indent))}
 
 this utility function prints out an object. for debugging purpose
 
-.[method to generate blank block processing object]
+.[method to generate blank block content object]
 const getBlankDocObj = ()=&gt;{ return { blocks:[], data:{}}}
 
 .[method to generate blank block dependency graph]
 const getBlankDepGraph = ()=&gt;{
   let newG = graph.createGraph({ title:"Block Dependency graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
+  return {...newG}
+}
+
+.[method to generate blank knowledge graph]
+const getBlankKnowledgeGraph = ()=&gt;{
+  let newG = graph.createGraph({ title:"Doc knowledge graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
   return {...newG}
 }
 
@@ -129,13 +135,13 @@ The above can be understood more easily with some examples:
 - hash("+block name") = "block-name"
 
 
-Now, the most important part of the programs. The annotation declerations. 
+Now, the most important part of the programs. The annotation declarations. 
 
-What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations makes the document more strucuted and provides a way to extract "knowledge" from the document which can be further processed.  
+What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations makes the document more structured and provides a way to extract "knowledge" from the document which can be further processed.  
 
 There are 3 types of annotations :
-- decleration : this will be used to declare blocks or give names to blocks
-- assignment : this will be used to include the content of one blocks in another block (or to declare a block dependency)
+- declaration : this will be used to declare blocks or give names to blocks
+- invocation : this will be used to include the content of one blocks in another block (or to declare a block dependency)
 - action : to declare metadata and actions. these annotations are processed within a "context" which is determined by the locations of where it is used
 
 Each annotation type has a different delimiter within which they are "defined" in a document
@@ -144,11 +150,17 @@ For each type of annotation, we need to specify a few things :
 - how to extract annotations from the block text ?
 - how generate a replacement text for a certain annotation ? (after an annotation is successfully processed, it can either be removed from the processed block text or replaced with some text or left unchanged)
 
-Decleration annotation : 
+Declaration annotation : 
 
 .[Annotation declerations]
 const annotations = {
-  declaration: {
+  &gt;[decleration annotation],
+  &gt;[invocation annotation],
+  &gt;[action annotation]
+}
+
+.[decleration annotation]
+declaration: {
     extract:(text)=&gt;{
       // all declarations are in the first annotation block.
       const tx = text.trim()
@@ -165,8 +177,10 @@ const annotations = {
       const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
       return text.replaceAll(theRegex,"")
     }
-  },
-  assignment: {
+}
+
+.[invocation annotation]
+assignment: {
     extract: (text) =&gt;{
       const txt = text.trim()
       const theRegex = /\&gt;\[([\w\s\-]+?)\]/gm
@@ -182,12 +196,43 @@ const annotations = {
       return asmts
     }
   }
+
+.[action annotation]
+action: {
+  extract: (text) =&gt; {
+  }
 }
+
+Now we need to generate the document object. 
+The first step is to actually generate the blocks by  splitting the document. 
+we must also initialise:
+- the document object. this consists of an array of "blocks" which holds the blocks in the order in which they were declared in the document  and a blank object "data". data will contain all processed block data. the key will be each unique block in the document and it values will be all the data related to it. this may include the raw text, processed text, annotations used in the text etc...
+- the block dependency graph. blocks once declared (via deceleration annotation) can be used in other blocks. this means some blocks will depend on other blocks for their full content. this means we have to make sure that there are no cyclic dependencies among the blocks and a block is processed after all it's dependent blocks are processed. this is ensured if the block dependency graph forms a directed acyclic graph. the block dependency graph captures the dependencies of one block over other. 
+
+consider the following example :
+block1 : some text
+block2 : some text + block 1
+here block2 is dependent on block1. in the dependency graph there will be a directed edge from block2 to block1 because block 2 depends on block1 for its content. thus block 1 must be processed first. 
+
+now consider 
+block1 : some text + block 2
+block 2: some text + block 3
+block 3 : some text + block 1
+the above blocks cannot be processed as there is a cyclic dependency between them. 
+
+once we have an array of blocks, we need to iterate through all the blocks to do a few things :
+- one : process decleration annotations
+  - determine the name of each blocks. 
+  - some blocks might be named using the declaration annotation. if not, they have to be assigned a unique block name.
+  - if block is being processed for the first time, we need to initialize the block in the blockContent object as well. 
+  - if the block is being appended, some additional processing needs to be done 
+
+- two : process application annotation
 
 .[Generate document object]
   &gt;[Method for First pass]
   &gt;[Method for Second pass] 
-  &gt;[Generate block processing order]
+  &gt;[Method to generate block processing order]
   const generateDocObject = (doc,options={})=&gt;{
     try{
       const blocks = docToBlocks(doc,"\n\n")
@@ -202,43 +247,52 @@ const annotations = {
 
 .[Method for First pass]
 const processBlocks = (blocks) =&gt; {
-  let d = getBlankDocObj()
-  let g = getBlankDepGraph()
-  let edgesToAdd = []
+  &gt;[initialize doc and graph]
   blocks.map((block,index)=&gt;{
     if(block){
-        const newBlock = annotations.declaration.extract(block)
-        const processedText = annotations.declaration.generateText(block)
-        if(d.blocks.indexOf(newBlock.id)==-1){
-          d.blocks.push(newBlock.id)
-          let data = {
-            rawText: [{block,index}],
-            text:processedText,
-            annotations: { d:{index, ...newBlock}, a:{}}
-          }
-          d.data[newBlock.id] = data
-          g = graph.addVertex(g,{id:newBlock.id})
-        }else{
-          if(newBlock.isAppend){
-            d.data[newBlock.id]['text'] += " \n "+processedText
-            d.data[newBlock.id]['rawText'].push({block,index})
-          }
-        }
-        const allAsmts = annotations.assignment.extract(block)
-        if(!d.data[newBlock.id]['annotations']['a']['valid']){
-          d.data[newBlock.id]['annotations']['a']['valid'] = []
-        }
-        allAsmts.map(itm=&gt;{
-          if(itm.id != newBlock.id){
-            d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
-            edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
-          }
-        })
+        &gt;[process decleration annotations in the block]
+        &gt;[process assignment annotations in the block]
     }
   })
   edgesToAdd.map(edge=&gt;{g = graph.addEdge(g,edge)})
   return {d,g}
 }
+
+.[initialize doc and graph]
+  let d = getBlankDocObj()
+  let g = getBlankDepGraph()
+  let edgesToAdd = []
+
+.[process decleration annotations in the block]
+const newBlock = annotations.declaration.extract(block)
+const processedText = annotations.declaration.generateText(block)
+if(d.blocks.indexOf(newBlock.id)==-1){
+  d.blocks.push(newBlock.id)
+  let data = {
+    rawText: [{block,index}],
+    text:processedText,
+    annotations: { d:{index, ...newBlock}, a:{}}
+  }
+  d.data[newBlock.id] = data
+  g = graph.addVertex(g,{id:newBlock.id})
+}else{
+  if(newBlock.isAppend){
+    d.data[newBlock.id]['text'] += " \n "+processedText
+    d.data[newBlock.id]['rawText'].push({block,index})
+  }
+}
+
+.[process assignment annotations in the block]
+const allAsmts = annotations.assignment.extract(block)
+if(!d.data[newBlock.id]['annotations']['a']['valid']){
+  d.data[newBlock.id]['annotations']['a']['valid'] = []
+}
+allAsmts.map(itm=&gt;{
+  if(itm.id != newBlock.id){
+    d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
+    edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
+  }
+})
 
 .[Method for Second pass]
 const processBlocksInOrder = (docObj, vertexOrder) =&gt; {
@@ -256,8 +310,13 @@ const processBlocksInOrder = (docObj, vertexOrder) =&gt; {
   return docObj
 }
 
-.[Generate Block processing order]
+.[Method to generate block processing order]
 const generateProcessingOrder = (blockDep)=&gt;{ return graph.TopologicalSort(blockDep) }
+
+Phew! the main part of the program is done! Now, given a document, we can generate a document Object for it which consists of blockContent, blockDependencyGraph, blockProcessingOrder and knowlegeGraph 
+Now we can foucs on generating outputs from this doucment. By utilizing all the objects generated for this document we can generate all sorts of documents. for instance we can save content of a certian block as a file. this block can be a fully functional program.
+We can also generate interactive HTML documents. 
+
 
 .[Generate output document]
 const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
@@ -325,88 +384,123 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
             <div class="graph" id="graph0"></div>
             <details><summary>GraphData</summary><pre>{
   "vertices": {
-    "12940": {
-      "label": "12940",
+    "11452": {
+      "label": "11452",
       "weight": "",
       "temp": {}
     },
-    "22001": {
-      "label": "22001",
+    "11797": {
+      "label": "11797",
       "weight": "",
       "temp": {}
     },
-    "22003": {
-      "label": "22003",
+    "18944": {
+      "label": "18944",
       "weight": "",
       "temp": {}
     },
-    "26817": {
-      "label": "26817",
+    "20888": {
+      "label": "20888",
       "weight": "",
       "temp": {}
     },
-    "36613": {
-      "label": "36613",
+    "23733": {
+      "label": "23733",
       "weight": "",
       "temp": {}
     },
-    "39982": {
-      "label": "39982",
+    "25838": {
+      "label": "25838",
       "weight": "",
       "temp": {}
     },
-    "43219": {
-      "label": "43219",
+    "26165": {
+      "label": "26165",
       "weight": "",
       "temp": {}
     },
-    "50614": {
-      "label": "50614",
+    "35441": {
+      "label": "35441",
       "weight": "",
       "temp": {}
     },
-    "52979": {
-      "label": "52979",
+    "40194": {
+      "label": "40194",
       "weight": "",
       "temp": {}
     },
-    "62947": {
-      "label": "62947",
+    "41565": {
+      "label": "41565",
       "weight": "",
       "temp": {}
     },
-    "65083": {
-      "label": "65083",
+    "42306": {
+      "label": "42306",
       "weight": "",
       "temp": {}
     },
-    "69384": {
-      "label": "69384",
+    "46205": {
+      "label": "46205",
       "weight": "",
       "temp": {}
     },
-    "70062": {
-      "label": "70062",
+    "46628": {
+      "label": "46628",
       "weight": "",
       "temp": {}
     },
-    "75400": {
-      "label": "75400",
+    "50796": {
+      "label": "50796",
       "weight": "",
       "temp": {}
     },
-    "88488": {
-      "label": "88488",
+    "52861": {
+      "label": "52861",
       "weight": "",
       "temp": {}
     },
-    "88927": {
-      "label": "88927",
+    "57269": {
+      "label": "57269",
       "weight": "",
       "temp": {}
     },
-    "94263": {
-      "label": "94263",
+    "61203": {
+      "label": "61203",
+      "weight": "",
+      "temp": {}
+    },
+    "68424": {
+      "label": "68424",
+      "weight": "",
+      "temp": {}
+    },
+    "73073": {
+      "label": "73073",
+      "weight": "",
+      "temp": {}
+    },
+    "78233": {
+      "label": "78233",
+      "weight": "",
+      "temp": {}
+    },
+    "84458": {
+      "label": "84458",
+      "weight": "",
+      "temp": {}
+    },
+    "90629": {
+      "label": "90629",
+      "weight": "",
+      "temp": {}
+    },
+    "98424": {
+      "label": "98424",
+      "weight": "",
+      "temp": {}
+    },
+    "99404": {
+      "label": "99404",
       "weight": "",
       "temp": {}
     },
@@ -460,13 +554,18 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
       "weight": "",
       "temp": {}
     },
-    "method-to-generate-blank-block-processing-object": {
-      "label": "method-to-generate-blank-block-processing-object",
+    "method-to-generate-blank-block-content-object": {
+      "label": "method-to-generate-blank-block-content-object",
       "weight": "",
       "temp": {}
     },
     "method-to-generate-blank-block-dependency-graph": {
       "label": "method-to-generate-blank-block-dependency-graph",
+      "weight": "",
+      "temp": {}
+    },
+    "method-to-generate-blank-knowledge-graph": {
+      "label": "method-to-generate-blank-knowledge-graph",
       "weight": "",
       "temp": {}
     },
@@ -480,6 +579,21 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
       "weight": "",
       "temp": {}
     },
+    "decleration-annotation": {
+      "label": "decleration-annotation",
+      "weight": "",
+      "temp": {}
+    },
+    "invocation-annotation": {
+      "label": "invocation-annotation",
+      "weight": "",
+      "temp": {}
+    },
+    "action-annotation": {
+      "label": "action-annotation",
+      "weight": "",
+      "temp": {}
+    },
     "generate-document-object": {
       "label": "generate-document-object",
       "weight": "",
@@ -490,13 +604,28 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
       "weight": "",
       "temp": {}
     },
+    "initialize-doc-and-graph": {
+      "label": "initialize-doc-and-graph",
+      "weight": "",
+      "temp": {}
+    },
+    "process-decleration-annotations-in-the-block": {
+      "label": "process-decleration-annotations-in-the-block",
+      "weight": "",
+      "temp": {}
+    },
+    "process-assignment-annotations-in-the-block": {
+      "label": "process-assignment-annotations-in-the-block",
+      "weight": "",
+      "temp": {}
+    },
     "method-for-second-pass": {
       "label": "method-for-second-pass",
       "weight": "",
       "temp": {}
     },
-    "generate-block-processing-order": {
-      "label": "generate-block-processing-order",
+    "method-to-generate-block-processing-order": {
+      "label": "method-to-generate-block-processing-order",
       "weight": "",
       "temp": {}
     },
@@ -586,7 +715,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "utility-functions",
-      "v2": "method-to-generate-blank-block-processing-object",
+      "v2": "method-to-generate-blank-block-content-object",
       "weight": "",
       "label": "",
       "temp": {}
@@ -600,7 +729,35 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "utility-functions",
+      "v2": "method-to-generate-blank-knowledge-graph",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "utility-functions",
       "v2": "method-to-hash-block-name",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "annotation-declerations",
+      "v2": "decleration-annotation",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "annotation-declerations",
+      "v2": "invocation-annotation",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "annotation-declerations",
+      "v2": "action-annotation",
       "weight": "",
       "label": "",
       "temp": {}
@@ -621,7 +778,28 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "generate-document-object",
-      "v2": "generate-block-processing-order",
+      "v2": "method-to-generate-block-processing-order",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-for-first-pass",
+      "v2": "initialize-doc-and-graph",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-for-first-pass",
+      "v2": "process-decleration-annotations-in-the-block",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-for-first-pass",
+      "v2": "process-assignment-annotations-in-the-block",
       "weight": "",
       "label": "",
       "temp": {}
@@ -643,7 +821,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
   }
 }</pre></details>
             <script>
-              let dataForViz0 = {"nodes":[{"id":"12940","label":"12940"},{"id":"22001","label":"22001"},{"id":"22003","label":"22003"},{"id":"26817","label":"26817"},{"id":"36613","label":"36613"},{"id":"39982","label":"39982"},{"id":"43219","label":"43219"},{"id":"50614","label":"50614"},{"id":"52979","label":"52979"},{"id":"62947","label":"62947"},{"id":"65083","label":"65083"},{"id":"69384","label":"69384"},{"id":"70062","label":"70062"},{"id":"75400","label":"75400"},{"id":"88488","label":"88488"},{"id":"88927","label":"88927"},{"id":"94263","label":"94263"},{"id":"main","label":"main"},{"id":"main-program","label":"main-program"},{"id":"program-for-testing","label":"program-for-testing"},{"id":"imports","label":"imports"},{"id":"doc-conventions","label":"doc-conventions"},{"id":"utility-functions","label":"utility-functions"},{"id":"global-declerations","label":"global-declerations"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer"},{"id":"method-to-print-an-object","label":"method-to-print-an-object"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name"},{"id":"annotation-declerations","label":"annotation-declerations"},{"id":"generate-document-object","label":"generate-document-object"},{"id":"method-for-first-pass","label":"method-for-first-pass"},{"id":"method-for-second-pass","label":"method-for-second-pass"},{"id":"generate-block-processing-order","label":"generate-block-processing-order"},{"id":"generate-output-document","label":"generate-output-document"}],"edges":[{"from":"main","to":"imports"},{"from":"main","to":"global-declerations"},{"from":"main","to":"utility-functions"},{"from":"main","to":"annotation-declerations"},{"from":"main","to":"generate-document-object"},{"from":"main","to":"generate-output-document"},{"from":"main-program","to":"main"},{"from":"program-for-testing","to":"main"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks"},{"from":"utility-functions","to":"method-to-generate-random-integer"},{"from":"utility-functions","to":"method-to-print-an-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-processing-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph"},{"from":"utility-functions","to":"method-to-hash-block-name"},{"from":"generate-document-object","to":"method-for-first-pass"},{"from":"generate-document-object","to":"method-for-second-pass"},{"from":"generate-document-object","to":"generate-block-processing-order"}],"options":{"edges":{"arrows":"to"}}}
+              let dataForViz0 = {"nodes":[{"id":"11452","label":"11452"},{"id":"11797","label":"11797"},{"id":"18944","label":"18944"},{"id":"20888","label":"20888"},{"id":"23733","label":"23733"},{"id":"25838","label":"25838"},{"id":"26165","label":"26165"},{"id":"35441","label":"35441"},{"id":"40194","label":"40194"},{"id":"41565","label":"41565"},{"id":"42306","label":"42306"},{"id":"46205","label":"46205"},{"id":"46628","label":"46628"},{"id":"50796","label":"50796"},{"id":"52861","label":"52861"},{"id":"57269","label":"57269"},{"id":"61203","label":"61203"},{"id":"68424","label":"68424"},{"id":"73073","label":"73073"},{"id":"78233","label":"78233"},{"id":"84458","label":"84458"},{"id":"90629","label":"90629"},{"id":"98424","label":"98424"},{"id":"99404","label":"99404"},{"id":"main","label":"main"},{"id":"main-program","label":"main-program"},{"id":"program-for-testing","label":"program-for-testing"},{"id":"imports","label":"imports"},{"id":"doc-conventions","label":"doc-conventions"},{"id":"utility-functions","label":"utility-functions"},{"id":"global-declerations","label":"global-declerations"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer"},{"id":"method-to-print-an-object","label":"method-to-print-an-object"},{"id":"method-to-generate-blank-block-content-object","label":"method-to-generate-blank-block-content-object"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph"},{"id":"method-to-generate-blank-knowledge-graph","label":"method-to-generate-blank-knowledge-graph"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name"},{"id":"annotation-declerations","label":"annotation-declerations"},{"id":"decleration-annotation","label":"decleration-annotation"},{"id":"invocation-annotation","label":"invocation-annotation"},{"id":"action-annotation","label":"action-annotation"},{"id":"generate-document-object","label":"generate-document-object"},{"id":"method-for-first-pass","label":"method-for-first-pass"},{"id":"initialize-doc-and-graph","label":"initialize-doc-and-graph"},{"id":"process-decleration-annotations-in-the-block","label":"process-decleration-annotations-in-the-block"},{"id":"process-assignment-annotations-in-the-block","label":"process-assignment-annotations-in-the-block"},{"id":"method-for-second-pass","label":"method-for-second-pass"},{"id":"method-to-generate-block-processing-order","label":"method-to-generate-block-processing-order"},{"id":"generate-output-document","label":"generate-output-document"}],"edges":[{"from":"main","to":"imports"},{"from":"main","to":"global-declerations"},{"from":"main","to":"utility-functions"},{"from":"main","to":"annotation-declerations"},{"from":"main","to":"generate-document-object"},{"from":"main","to":"generate-output-document"},{"from":"main-program","to":"main"},{"from":"program-for-testing","to":"main"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks"},{"from":"utility-functions","to":"method-to-generate-random-integer"},{"from":"utility-functions","to":"method-to-print-an-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-content-object"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph"},{"from":"utility-functions","to":"method-to-generate-blank-knowledge-graph"},{"from":"utility-functions","to":"method-to-hash-block-name"},{"from":"annotation-declerations","to":"decleration-annotation"},{"from":"annotation-declerations","to":"invocation-annotation"},{"from":"annotation-declerations","to":"action-annotation"},{"from":"generate-document-object","to":"method-for-first-pass"},{"from":"generate-document-object","to":"method-for-second-pass"},{"from":"generate-document-object","to":"method-to-generate-block-processing-order"},{"from":"method-for-first-pass","to":"initialize-doc-and-graph"},{"from":"method-for-first-pass","to":"process-decleration-annotations-in-the-block"},{"from":"method-for-first-pass","to":"process-assignment-annotations-in-the-block"}],"options":{"edges":{"arrows":"to"}}}
               const container0 = document.getElementById('graph0')
               const data0 = {
                 nodes: new vis.DataSet(dataForViz0.nodes),
@@ -655,8 +833,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
             <div class="graph" id="graph1"></div>
             <details><summary>GraphData</summary><pre>{
   "vertices": {
-    "12940": {
-      "label": "12940 (d=1,f=2)",
+    "11452": {
+      "label": "11452 (d=1,f=2)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -666,8 +844,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "22001": {
-      "label": "22001 (d=3,f=4)",
+    "11797": {
+      "label": "11797 (d=3,f=4)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -677,8 +855,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "22003": {
-      "label": "22003 (d=5,f=6)",
+    "18944": {
+      "label": "18944 (d=5,f=6)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -688,8 +866,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "26817": {
-      "label": "26817 (d=7,f=8)",
+    "20888": {
+      "label": "20888 (d=7,f=8)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -699,8 +877,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "36613": {
-      "label": "36613 (d=9,f=10)",
+    "23733": {
+      "label": "23733 (d=9,f=10)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -710,8 +888,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "39982": {
-      "label": "39982 (d=11,f=12)",
+    "25838": {
+      "label": "25838 (d=11,f=12)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -721,8 +899,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "43219": {
-      "label": "43219 (d=13,f=14)",
+    "26165": {
+      "label": "26165 (d=13,f=14)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -732,8 +910,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "50614": {
-      "label": "50614 (d=15,f=16)",
+    "35441": {
+      "label": "35441 (d=15,f=16)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -743,8 +921,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "52979": {
-      "label": "52979 (d=17,f=18)",
+    "40194": {
+      "label": "40194 (d=17,f=18)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -754,8 +932,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "62947": {
-      "label": "62947 (d=19,f=20)",
+    "41565": {
+      "label": "41565 (d=19,f=20)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -765,8 +943,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "65083": {
-      "label": "65083 (d=21,f=22)",
+    "42306": {
+      "label": "42306 (d=21,f=22)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -776,8 +954,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "69384": {
-      "label": "69384 (d=23,f=24)",
+    "46205": {
+      "label": "46205 (d=23,f=24)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -787,8 +965,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "70062": {
-      "label": "70062 (d=25,f=26)",
+    "46628": {
+      "label": "46628 (d=25,f=26)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -798,8 +976,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "75400": {
-      "label": "75400 (d=27,f=28)",
+    "50796": {
+      "label": "50796 (d=27,f=28)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -809,8 +987,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "88488": {
-      "label": "88488 (d=29,f=30)",
+    "52861": {
+      "label": "52861 (d=29,f=30)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -820,8 +998,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "88927": {
-      "label": "88927 (d=31,f=32)",
+    "57269": {
+      "label": "57269 (d=31,f=32)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -831,8 +1009,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "94263": {
-      "label": "94263 (d=33,f=34)",
+    "61203": {
+      "label": "61203 (d=33,f=34)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -842,212 +1020,366 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "main": {
-      "label": "main (d=35,f=66)",
+    "68424": {
+      "label": "68424 (d=35,f=36)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
         "d": 35,
-        "f": 66,
-        "degree": 6
+        "f": 36,
+        "degree": 0
       }
     },
-    "main-program": {
-      "label": "main-program (d=67,f=68)",
+    "73073": {
+      "label": "73073 (d=37,f=38)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
-        "d": 67,
-        "f": 68,
-        "degree": 1
+        "d": 37,
+        "f": 38,
+        "degree": 0
       }
     },
-    "program-for-testing": {
-      "label": "program-for-testing (d=69,f=70)",
+    "78233": {
+      "label": "78233 (d=39,f=40)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
-        "d": 69,
-        "f": 70,
-        "degree": 1
-      }
-    },
-    "imports": {
-      "label": "imports (d=36,f=37)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 36,
-        "f": 37,
+        "d": 39,
+        "f": 40,
         "degree": 0
       }
     },
-    "doc-conventions": {
-      "label": "doc-conventions (d=71,f=72)",
+    "84458": {
+      "label": "84458 (d=41,f=42)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
-        "d": 71,
-        "f": 72,
-        "degree": 0
-      }
-    },
-    "utility-functions": {
-      "label": "utility-functions (d=40,f=53)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 40,
-        "f": 53,
-        "degree": 6
-      }
-    },
-    "global-declerations": {
-      "label": "global-declerations (d=38,f=39)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 38,
-        "f": 39,
-        "degree": 0
-      }
-    },
-    "method-to-split-doc-into-blocks": {
-      "label": "method-to-split-doc-into-blocks (d=41,f=42)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "utility-functions",
         "d": 41,
         "f": 42,
         "degree": 0
       }
     },
-    "method-to-generate-random-integer": {
-      "label": "method-to-generate-random-integer (d=43,f=44)",
+    "90629": {
+      "label": "90629 (d=43,f=44)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
+        "pi": null,
         "d": 43,
         "f": 44,
         "degree": 0
       }
     },
-    "method-to-print-an-object": {
-      "label": "method-to-print-an-object (d=45,f=46)",
+    "98424": {
+      "label": "98424 (d=45,f=46)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
+        "pi": null,
         "d": 45,
         "f": 46,
         "degree": 0
       }
     },
-    "method-to-generate-blank-block-processing-object": {
-      "label": "method-to-generate-blank-block-processing-object (d=47,f=48)",
+    "99404": {
+      "label": "99404 (d=47,f=48)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
+        "pi": null,
         "d": 47,
         "f": 48,
         "degree": 0
       }
     },
-    "method-to-generate-blank-block-dependency-graph": {
-      "label": "method-to-generate-blank-block-dependency-graph (d=49,f=50)",
+    "main": {
+      "label": "main (d=49,f=94)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
+        "pi": null,
         "d": 49,
-        "f": 50,
-        "degree": 0
+        "f": 94,
+        "degree": 6
       }
     },
-    "method-to-hash-block-name": {
-      "label": "method-to-hash-block-name (d=51,f=52)",
+    "main-program": {
+      "label": "main-program (d=95,f=96)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
-        "d": 51,
-        "f": 52,
+        "pi": null,
+        "d": 95,
+        "f": 96,
+        "degree": 1
+      }
+    },
+    "program-for-testing": {
+      "label": "program-for-testing (d=97,f=98)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 97,
+        "f": 98,
+        "degree": 1
+      }
+    },
+    "imports": {
+      "label": "imports (d=50,f=51)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 50,
+        "f": 51,
         "degree": 0
       }
     },
-    "annotation-declerations": {
-      "label": "annotation-declerations (d=54,f=55)",
+    "doc-conventions": {
+      "label": "doc-conventions (d=99,f=100)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 99,
+        "f": 100,
+        "degree": 0
+      }
+    },
+    "utility-functions": {
+      "label": "utility-functions (d=54,f=69)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
         "d": 54,
-        "f": 55,
-        "degree": 0
+        "f": 69,
+        "degree": 7
       }
     },
-    "generate-document-object": {
-      "label": "generate-document-object (d=56,f=63)",
+    "global-declerations": {
+      "label": "global-declerations (d=52,f=53)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
-        "d": 56,
-        "f": 63,
-        "degree": 3
+        "d": 52,
+        "f": 53,
+        "degree": 0
       }
     },
-    "method-for-first-pass": {
-      "label": "method-for-first-pass (d=57,f=58)",
+    "method-to-split-doc-into-blocks": {
+      "label": "method-to-split-doc-into-blocks (d=55,f=56)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "generate-document-object",
+        "pi": "utility-functions",
+        "d": 55,
+        "f": 56,
+        "degree": 0
+      }
+    },
+    "method-to-generate-random-integer": {
+      "label": "method-to-generate-random-integer (d=57,f=58)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
         "d": 57,
         "f": 58,
         "degree": 0
       }
     },
-    "method-for-second-pass": {
-      "label": "method-for-second-pass (d=59,f=60)",
+    "method-to-print-an-object": {
+      "label": "method-to-print-an-object (d=59,f=60)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "generate-document-object",
+        "pi": "utility-functions",
         "d": 59,
         "f": 60,
         "degree": 0
       }
     },
-    "generate-block-processing-order": {
-      "label": "generate-block-processing-order (d=61,f=62)",
+    "method-to-generate-blank-block-content-object": {
+      "label": "method-to-generate-blank-block-content-object (d=61,f=62)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "generate-document-object",
+        "pi": "utility-functions",
         "d": 61,
         "f": 62,
         "degree": 0
       }
     },
-    "generate-output-document": {
-      "label": "generate-output-document (d=64,f=65)",
+    "method-to-generate-blank-block-dependency-graph": {
+      "label": "method-to-generate-blank-block-dependency-graph (d=63,f=64)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 63,
+        "f": 64,
+        "degree": 0
+      }
+    },
+    "method-to-generate-blank-knowledge-graph": {
+      "label": "method-to-generate-blank-knowledge-graph (d=65,f=66)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 65,
+        "f": 66,
+        "degree": 0
+      }
+    },
+    "method-to-hash-block-name": {
+      "label": "method-to-hash-block-name (d=67,f=68)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 67,
+        "f": 68,
+        "degree": 0
+      }
+    },
+    "annotation-declerations": {
+      "label": "annotation-declerations (d=70,f=77)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
-        "d": 64,
-        "f": 65,
+        "d": 70,
+        "f": 77,
+        "degree": 3
+      }
+    },
+    "decleration-annotation": {
+      "label": "decleration-annotation (d=71,f=72)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "annotation-declerations",
+        "d": 71,
+        "f": 72,
+        "degree": 0
+      }
+    },
+    "invocation-annotation": {
+      "label": "invocation-annotation (d=73,f=74)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "annotation-declerations",
+        "d": 73,
+        "f": 74,
+        "degree": 0
+      }
+    },
+    "action-annotation": {
+      "label": "action-annotation (d=75,f=76)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "annotation-declerations",
+        "d": 75,
+        "f": 76,
+        "degree": 0
+      }
+    },
+    "generate-document-object": {
+      "label": "generate-document-object (d=78,f=91)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 78,
+        "f": 91,
+        "degree": 3
+      }
+    },
+    "method-for-first-pass": {
+      "label": "method-for-first-pass (d=79,f=86)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 79,
+        "f": 86,
+        "degree": 3
+      }
+    },
+    "initialize-doc-and-graph": {
+      "label": "initialize-doc-and-graph (d=80,f=81)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "method-for-first-pass",
+        "d": 80,
+        "f": 81,
+        "degree": 0
+      }
+    },
+    "process-decleration-annotations-in-the-block": {
+      "label": "process-decleration-annotations-in-the-block (d=82,f=83)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "method-for-first-pass",
+        "d": 82,
+        "f": 83,
+        "degree": 0
+      }
+    },
+    "process-assignment-annotations-in-the-block": {
+      "label": "process-assignment-annotations-in-the-block (d=84,f=85)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "method-for-first-pass",
+        "d": 84,
+        "f": 85,
+        "degree": 0
+      }
+    },
+    "method-for-second-pass": {
+      "label": "method-for-second-pass (d=87,f=88)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 87,
+        "f": 88,
+        "degree": 0
+      }
+    },
+    "method-to-generate-block-processing-order": {
+      "label": "method-to-generate-block-processing-order (d=89,f=90)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 89,
+        "f": 90,
+        "degree": 0
+      }
+    },
+    "generate-output-document": {
+      "label": "generate-output-document (d=92,f=93)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 92,
+        "f": 93,
         "degree": 0
       }
     }
@@ -1109,7 +1441,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "utility-functions",
-      "v2": "method-to-generate-blank-block-processing-object",
+      "v2": "method-to-generate-blank-block-content-object",
       "weight": "",
       "label": "tree-edge",
       "temp": {
@@ -1119,6 +1451,15 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     {
       "v1": "utility-functions",
       "v2": "method-to-generate-blank-block-dependency-graph",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "utility-functions",
+      "v2": "method-to-generate-blank-knowledge-graph",
       "weight": "",
       "label": "tree-edge",
       "temp": {
@@ -1144,6 +1485,33 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
       }
     },
     {
+      "v1": "annotation-declerations",
+      "v2": "decleration-annotation",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "annotation-declerations",
+      "v2": "invocation-annotation",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "annotation-declerations",
+      "v2": "action-annotation",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
       "v1": "main",
       "v2": "generate-document-object",
       "weight": "",
@@ -1162,6 +1530,33 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
       }
     },
     {
+      "v1": "method-for-first-pass",
+      "v2": "initialize-doc-and-graph",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "method-for-first-pass",
+      "v2": "process-decleration-annotations-in-the-block",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
+      "v1": "method-for-first-pass",
+      "v2": "process-assignment-annotations-in-the-block",
+      "weight": "",
+      "label": "tree-edge",
+      "temp": {
+        "color": "green"
+      }
+    },
+    {
       "v1": "generate-document-object",
       "v2": "method-for-second-pass",
       "weight": "",
@@ -1172,7 +1567,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "generate-document-object",
-      "v2": "generate-block-processing-order",
+      "v2": "method-to-generate-block-processing-order",
       "weight": "",
       "label": "tree-edge",
       "temp": {
@@ -1223,7 +1618,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
   }
 }</pre></details>
             <script>
-              let dataForViz1 = {"nodes":[{"id":"12940","label":"12940 (d=1,f=2)"},{"id":"22001","label":"22001 (d=3,f=4)"},{"id":"22003","label":"22003 (d=5,f=6)"},{"id":"26817","label":"26817 (d=7,f=8)"},{"id":"36613","label":"36613 (d=9,f=10)"},{"id":"39982","label":"39982 (d=11,f=12)"},{"id":"43219","label":"43219 (d=13,f=14)"},{"id":"50614","label":"50614 (d=15,f=16)"},{"id":"52979","label":"52979 (d=17,f=18)"},{"id":"62947","label":"62947 (d=19,f=20)"},{"id":"65083","label":"65083 (d=21,f=22)"},{"id":"69384","label":"69384 (d=23,f=24)"},{"id":"70062","label":"70062 (d=25,f=26)"},{"id":"75400","label":"75400 (d=27,f=28)"},{"id":"88488","label":"88488 (d=29,f=30)"},{"id":"88927","label":"88927 (d=31,f=32)"},{"id":"94263","label":"94263 (d=33,f=34)"},{"id":"main","label":"main (d=35,f=66)"},{"id":"main-program","label":"main-program (d=67,f=68)"},{"id":"program-for-testing","label":"program-for-testing (d=69,f=70)"},{"id":"imports","label":"imports (d=36,f=37)"},{"id":"doc-conventions","label":"doc-conventions (d=71,f=72)"},{"id":"utility-functions","label":"utility-functions (d=40,f=53)"},{"id":"global-declerations","label":"global-declerations (d=38,f=39)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=41,f=42)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=43,f=44)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=45,f=46)"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object (d=47,f=48)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=49,f=50)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=51,f=52)"},{"id":"annotation-declerations","label":"annotation-declerations (d=54,f=55)"},{"id":"generate-document-object","label":"generate-document-object (d=56,f=63)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=57,f=58)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=59,f=60)"},{"id":"generate-block-processing-order","label":"generate-block-processing-order (d=61,f=62)"},{"id":"generate-output-document","label":"generate-output-document (d=64,f=65)"}],"edges":[{"from":"main","to":"imports","color":"green","label":"tree-edge"},{"from":"main","to":"utility-functions","color":"green","label":"tree-edge"},{"from":"main","to":"global-declerations","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-random-integer","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-print-an-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-processing-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-hash-block-name","color":"green","label":"tree-edge"},{"from":"main","to":"annotation-declerations","color":"green","label":"tree-edge"},{"from":"main","to":"generate-document-object","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-first-pass","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-second-pass","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"generate-block-processing-order","color":"green","label":"tree-edge"},{"from":"main","to":"generate-output-document","color":"green","label":"tree-edge"},{"from":"main-program","to":"main","color":"violet","label":"cross-edge"},{"from":"program-for-testing","to":"main","color":"violet","label":"cross-edge"}],"options":{"edges":{"arrows":"to"}}}
+              let dataForViz1 = {"nodes":[{"id":"11452","label":"11452 (d=1,f=2)"},{"id":"11797","label":"11797 (d=3,f=4)"},{"id":"18944","label":"18944 (d=5,f=6)"},{"id":"20888","label":"20888 (d=7,f=8)"},{"id":"23733","label":"23733 (d=9,f=10)"},{"id":"25838","label":"25838 (d=11,f=12)"},{"id":"26165","label":"26165 (d=13,f=14)"},{"id":"35441","label":"35441 (d=15,f=16)"},{"id":"40194","label":"40194 (d=17,f=18)"},{"id":"41565","label":"41565 (d=19,f=20)"},{"id":"42306","label":"42306 (d=21,f=22)"},{"id":"46205","label":"46205 (d=23,f=24)"},{"id":"46628","label":"46628 (d=25,f=26)"},{"id":"50796","label":"50796 (d=27,f=28)"},{"id":"52861","label":"52861 (d=29,f=30)"},{"id":"57269","label":"57269 (d=31,f=32)"},{"id":"61203","label":"61203 (d=33,f=34)"},{"id":"68424","label":"68424 (d=35,f=36)"},{"id":"73073","label":"73073 (d=37,f=38)"},{"id":"78233","label":"78233 (d=39,f=40)"},{"id":"84458","label":"84458 (d=41,f=42)"},{"id":"90629","label":"90629 (d=43,f=44)"},{"id":"98424","label":"98424 (d=45,f=46)"},{"id":"99404","label":"99404 (d=47,f=48)"},{"id":"main","label":"main (d=49,f=94)"},{"id":"main-program","label":"main-program (d=95,f=96)"},{"id":"program-for-testing","label":"program-for-testing (d=97,f=98)"},{"id":"imports","label":"imports (d=50,f=51)"},{"id":"doc-conventions","label":"doc-conventions (d=99,f=100)"},{"id":"utility-functions","label":"utility-functions (d=54,f=69)"},{"id":"global-declerations","label":"global-declerations (d=52,f=53)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=55,f=56)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=57,f=58)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=59,f=60)"},{"id":"method-to-generate-blank-block-content-object","label":"method-to-generate-blank-block-content-object (d=61,f=62)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=63,f=64)"},{"id":"method-to-generate-blank-knowledge-graph","label":"method-to-generate-blank-knowledge-graph (d=65,f=66)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=67,f=68)"},{"id":"annotation-declerations","label":"annotation-declerations (d=70,f=77)"},{"id":"decleration-annotation","label":"decleration-annotation (d=71,f=72)"},{"id":"invocation-annotation","label":"invocation-annotation (d=73,f=74)"},{"id":"action-annotation","label":"action-annotation (d=75,f=76)"},{"id":"generate-document-object","label":"generate-document-object (d=78,f=91)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=79,f=86)"},{"id":"initialize-doc-and-graph","label":"initialize-doc-and-graph (d=80,f=81)"},{"id":"process-decleration-annotations-in-the-block","label":"process-decleration-annotations-in-the-block (d=82,f=83)"},{"id":"process-assignment-annotations-in-the-block","label":"process-assignment-annotations-in-the-block (d=84,f=85)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=87,f=88)"},{"id":"method-to-generate-block-processing-order","label":"method-to-generate-block-processing-order (d=89,f=90)"},{"id":"generate-output-document","label":"generate-output-document (d=92,f=93)"}],"edges":[{"from":"main","to":"imports","color":"green","label":"tree-edge"},{"from":"main","to":"utility-functions","color":"green","label":"tree-edge"},{"from":"main","to":"global-declerations","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-split-doc-into-blocks","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-random-integer","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-print-an-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-content-object","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-block-dependency-graph","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-generate-blank-knowledge-graph","color":"green","label":"tree-edge"},{"from":"utility-functions","to":"method-to-hash-block-name","color":"green","label":"tree-edge"},{"from":"main","to":"annotation-declerations","color":"green","label":"tree-edge"},{"from":"annotation-declerations","to":"decleration-annotation","color":"green","label":"tree-edge"},{"from":"annotation-declerations","to":"invocation-annotation","color":"green","label":"tree-edge"},{"from":"annotation-declerations","to":"action-annotation","color":"green","label":"tree-edge"},{"from":"main","to":"generate-document-object","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-first-pass","color":"green","label":"tree-edge"},{"from":"method-for-first-pass","to":"initialize-doc-and-graph","color":"green","label":"tree-edge"},{"from":"method-for-first-pass","to":"process-decleration-annotations-in-the-block","color":"green","label":"tree-edge"},{"from":"method-for-first-pass","to":"process-assignment-annotations-in-the-block","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-for-second-pass","color":"green","label":"tree-edge"},{"from":"generate-document-object","to":"method-to-generate-block-processing-order","color":"green","label":"tree-edge"},{"from":"main","to":"generate-output-document","color":"green","label":"tree-edge"},{"from":"main-program","to":"main","color":"violet","label":"cross-edge"},{"from":"program-for-testing","to":"main","color":"violet","label":"cross-edge"}],"options":{"edges":{"arrows":"to"}}}
               const container1 = document.getElementById('graph1')
               const data1 = {
                 nodes: new vis.DataSet(dataForViz1.nodes),
@@ -1235,8 +1630,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
             <div class="graph" id="graph2"></div>
             <details><summary>GraphData</summary><pre>{
   "vertices": {
-    "12940": {
-      "label": "12940 (d=1,f=2)",
+    "11452": {
+      "label": "11452 (d=1,f=2)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1246,8 +1641,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "22001": {
-      "label": "22001 (d=3,f=4)",
+    "11797": {
+      "label": "11797 (d=3,f=4)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1257,8 +1652,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "22003": {
-      "label": "22003 (d=5,f=6)",
+    "18944": {
+      "label": "18944 (d=5,f=6)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1268,8 +1663,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "26817": {
-      "label": "26817 (d=7,f=8)",
+    "20888": {
+      "label": "20888 (d=7,f=8)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1279,8 +1674,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "36613": {
-      "label": "36613 (d=9,f=10)",
+    "23733": {
+      "label": "23733 (d=9,f=10)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1290,8 +1685,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "39982": {
-      "label": "39982 (d=11,f=12)",
+    "25838": {
+      "label": "25838 (d=11,f=12)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1301,8 +1696,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "43219": {
-      "label": "43219 (d=13,f=14)",
+    "26165": {
+      "label": "26165 (d=13,f=14)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1312,8 +1707,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "50614": {
-      "label": "50614 (d=15,f=16)",
+    "35441": {
+      "label": "35441 (d=15,f=16)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1323,8 +1718,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "52979": {
-      "label": "52979 (d=17,f=18)",
+    "40194": {
+      "label": "40194 (d=17,f=18)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1334,8 +1729,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "62947": {
-      "label": "62947 (d=19,f=20)",
+    "41565": {
+      "label": "41565 (d=19,f=20)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1345,8 +1740,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "65083": {
-      "label": "65083 (d=21,f=22)",
+    "42306": {
+      "label": "42306 (d=21,f=22)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1356,8 +1751,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "69384": {
-      "label": "69384 (d=23,f=24)",
+    "46205": {
+      "label": "46205 (d=23,f=24)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1367,8 +1762,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "70062": {
-      "label": "70062 (d=25,f=26)",
+    "46628": {
+      "label": "46628 (d=25,f=26)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1378,8 +1773,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "75400": {
-      "label": "75400 (d=27,f=28)",
+    "50796": {
+      "label": "50796 (d=27,f=28)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1389,8 +1784,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "88488": {
-      "label": "88488 (d=29,f=30)",
+    "52861": {
+      "label": "52861 (d=29,f=30)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1400,8 +1795,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "88927": {
-      "label": "88927 (d=31,f=32)",
+    "57269": {
+      "label": "57269 (d=31,f=32)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1411,8 +1806,8 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "94263": {
-      "label": "94263 (d=33,f=34)",
+    "61203": {
+      "label": "61203 (d=33,f=34)",
       "weight": "",
       "temp": {
         "color": "black",
@@ -1422,331 +1817,534 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
         "degree": 0
       }
     },
-    "main": {
-      "label": "main (d=35,f=66)",
+    "68424": {
+      "label": "68424 (d=35,f=36)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
         "d": 35,
-        "f": 66,
-        "degree": 6
+        "f": 36,
+        "degree": 0
       }
     },
-    "main-program": {
-      "label": "main-program (d=67,f=68)",
+    "73073": {
+      "label": "73073 (d=37,f=38)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
-        "d": 67,
-        "f": 68,
-        "degree": 1
+        "d": 37,
+        "f": 38,
+        "degree": 0
       }
     },
-    "program-for-testing": {
-      "label": "program-for-testing (d=69,f=70)",
+    "78233": {
+      "label": "78233 (d=39,f=40)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
-        "d": 69,
-        "f": 70,
-        "degree": 1
-      }
-    },
-    "imports": {
-      "label": "imports (d=36,f=37)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 36,
-        "f": 37,
+        "d": 39,
+        "f": 40,
         "degree": 0
       }
     },
-    "doc-conventions": {
-      "label": "doc-conventions (d=71,f=72)",
+    "84458": {
+      "label": "84458 (d=41,f=42)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": null,
-        "d": 71,
-        "f": 72,
-        "degree": 0
-      }
-    },
-    "utility-functions": {
-      "label": "utility-functions (d=40,f=53)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 40,
-        "f": 53,
-        "degree": 6
-      }
-    },
-    "global-declerations": {
-      "label": "global-declerations (d=38,f=39)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "main",
-        "d": 38,
-        "f": 39,
-        "degree": 0
-      }
-    },
-    "method-to-split-doc-into-blocks": {
-      "label": "method-to-split-doc-into-blocks (d=41,f=42)",
-      "weight": "",
-      "temp": {
-        "color": "black",
-        "pi": "utility-functions",
         "d": 41,
         "f": 42,
         "degree": 0
       }
     },
-    "method-to-generate-random-integer": {
-      "label": "method-to-generate-random-integer (d=43,f=44)",
+    "90629": {
+      "label": "90629 (d=43,f=44)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
+        "pi": null,
         "d": 43,
         "f": 44,
         "degree": 0
       }
     },
-    "method-to-print-an-object": {
-      "label": "method-to-print-an-object (d=45,f=46)",
+    "98424": {
+      "label": "98424 (d=45,f=46)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
+        "pi": null,
         "d": 45,
         "f": 46,
         "degree": 0
       }
     },
-    "method-to-generate-blank-block-processing-object": {
-      "label": "method-to-generate-blank-block-processing-object (d=47,f=48)",
+    "99404": {
+      "label": "99404 (d=47,f=48)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
+        "pi": null,
         "d": 47,
         "f": 48,
         "degree": 0
       }
     },
-    "method-to-generate-blank-block-dependency-graph": {
-      "label": "method-to-generate-blank-block-dependency-graph (d=49,f=50)",
+    "main": {
+      "label": "main (d=49,f=94)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
+        "pi": null,
         "d": 49,
-        "f": 50,
-        "degree": 0
+        "f": 94,
+        "degree": 6
       }
     },
-    "method-to-hash-block-name": {
-      "label": "method-to-hash-block-name (d=51,f=52)",
+    "main-program": {
+      "label": "main-program (d=95,f=96)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "utility-functions",
-        "d": 51,
-        "f": 52,
+        "pi": null,
+        "d": 95,
+        "f": 96,
+        "degree": 1
+      }
+    },
+    "program-for-testing": {
+      "label": "program-for-testing (d=97,f=98)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 97,
+        "f": 98,
+        "degree": 1
+      }
+    },
+    "imports": {
+      "label": "imports (d=50,f=51)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 50,
+        "f": 51,
         "degree": 0
       }
     },
-    "annotation-declerations": {
-      "label": "annotation-declerations (d=54,f=55)",
+    "doc-conventions": {
+      "label": "doc-conventions (d=99,f=100)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": null,
+        "d": 99,
+        "f": 100,
+        "degree": 0
+      }
+    },
+    "utility-functions": {
+      "label": "utility-functions (d=54,f=69)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
         "d": 54,
-        "f": 55,
-        "degree": 0
+        "f": 69,
+        "degree": 7
       }
     },
-    "generate-document-object": {
-      "label": "generate-document-object (d=56,f=63)",
+    "global-declerations": {
+      "label": "global-declerations (d=52,f=53)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
-        "d": 56,
-        "f": 63,
-        "degree": 3
+        "d": 52,
+        "f": 53,
+        "degree": 0
       }
     },
-    "method-for-first-pass": {
-      "label": "method-for-first-pass (d=57,f=58)",
+    "method-to-split-doc-into-blocks": {
+      "label": "method-to-split-doc-into-blocks (d=55,f=56)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "generate-document-object",
+        "pi": "utility-functions",
+        "d": 55,
+        "f": 56,
+        "degree": 0
+      }
+    },
+    "method-to-generate-random-integer": {
+      "label": "method-to-generate-random-integer (d=57,f=58)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
         "d": 57,
         "f": 58,
         "degree": 0
       }
     },
-    "method-for-second-pass": {
-      "label": "method-for-second-pass (d=59,f=60)",
+    "method-to-print-an-object": {
+      "label": "method-to-print-an-object (d=59,f=60)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "generate-document-object",
+        "pi": "utility-functions",
         "d": 59,
         "f": 60,
         "degree": 0
       }
     },
-    "generate-block-processing-order": {
-      "label": "generate-block-processing-order (d=61,f=62)",
+    "method-to-generate-blank-block-content-object": {
+      "label": "method-to-generate-blank-block-content-object (d=61,f=62)",
       "weight": "",
       "temp": {
         "color": "black",
-        "pi": "generate-document-object",
+        "pi": "utility-functions",
         "d": 61,
         "f": 62,
         "degree": 0
       }
     },
-    "generate-output-document": {
-      "label": "generate-output-document (d=64,f=65)",
+    "method-to-generate-blank-block-dependency-graph": {
+      "label": "method-to-generate-blank-block-dependency-graph (d=63,f=64)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 63,
+        "f": 64,
+        "degree": 0
+      }
+    },
+    "method-to-generate-blank-knowledge-graph": {
+      "label": "method-to-generate-blank-knowledge-graph (d=65,f=66)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 65,
+        "f": 66,
+        "degree": 0
+      }
+    },
+    "method-to-hash-block-name": {
+      "label": "method-to-hash-block-name (d=67,f=68)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "utility-functions",
+        "d": 67,
+        "f": 68,
+        "degree": 0
+      }
+    },
+    "annotation-declerations": {
+      "label": "annotation-declerations (d=70,f=77)",
       "weight": "",
       "temp": {
         "color": "black",
         "pi": "main",
-        "d": 64,
-        "f": 65,
+        "d": 70,
+        "f": 77,
+        "degree": 3
+      }
+    },
+    "decleration-annotation": {
+      "label": "decleration-annotation (d=71,f=72)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "annotation-declerations",
+        "d": 71,
+        "f": 72,
+        "degree": 0
+      }
+    },
+    "invocation-annotation": {
+      "label": "invocation-annotation (d=73,f=74)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "annotation-declerations",
+        "d": 73,
+        "f": 74,
+        "degree": 0
+      }
+    },
+    "action-annotation": {
+      "label": "action-annotation (d=75,f=76)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "annotation-declerations",
+        "d": 75,
+        "f": 76,
+        "degree": 0
+      }
+    },
+    "generate-document-object": {
+      "label": "generate-document-object (d=78,f=91)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 78,
+        "f": 91,
+        "degree": 3
+      }
+    },
+    "method-for-first-pass": {
+      "label": "method-for-first-pass (d=79,f=86)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 79,
+        "f": 86,
+        "degree": 3
+      }
+    },
+    "initialize-doc-and-graph": {
+      "label": "initialize-doc-and-graph (d=80,f=81)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "method-for-first-pass",
+        "d": 80,
+        "f": 81,
+        "degree": 0
+      }
+    },
+    "process-decleration-annotations-in-the-block": {
+      "label": "process-decleration-annotations-in-the-block (d=82,f=83)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "method-for-first-pass",
+        "d": 82,
+        "f": 83,
+        "degree": 0
+      }
+    },
+    "process-assignment-annotations-in-the-block": {
+      "label": "process-assignment-annotations-in-the-block (d=84,f=85)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "method-for-first-pass",
+        "d": 84,
+        "f": 85,
+        "degree": 0
+      }
+    },
+    "method-for-second-pass": {
+      "label": "method-for-second-pass (d=87,f=88)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 87,
+        "f": 88,
+        "degree": 0
+      }
+    },
+    "method-to-generate-block-processing-order": {
+      "label": "method-to-generate-block-processing-order (d=89,f=90)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "generate-document-object",
+        "d": 89,
+        "f": 90,
+        "degree": 0
+      }
+    },
+    "generate-output-document": {
+      "label": "generate-output-document (d=92,f=93)",
+      "weight": "",
+      "temp": {
+        "color": "black",
+        "pi": "main",
+        "d": 92,
+        "f": 93,
         "degree": 0
       }
     }
   },
   "edges": [
     {
-      "v1": "12940",
-      "v2": "22001",
+      "v1": "11452",
+      "v2": "11797",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "22001",
-      "v2": "22003",
+      "v1": "11797",
+      "v2": "18944",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "22003",
-      "v2": "26817",
+      "v1": "18944",
+      "v2": "20888",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "26817",
-      "v2": "36613",
+      "v1": "20888",
+      "v2": "23733",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "36613",
-      "v2": "39982",
+      "v1": "23733",
+      "v2": "25838",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "39982",
-      "v2": "43219",
+      "v1": "25838",
+      "v2": "26165",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "43219",
-      "v2": "50614",
+      "v1": "26165",
+      "v2": "35441",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "50614",
-      "v2": "52979",
+      "v1": "35441",
+      "v2": "40194",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "52979",
-      "v2": "62947",
+      "v1": "40194",
+      "v2": "41565",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "62947",
-      "v2": "65083",
+      "v1": "41565",
+      "v2": "42306",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "65083",
-      "v2": "69384",
+      "v1": "42306",
+      "v2": "46205",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "69384",
-      "v2": "70062",
+      "v1": "46205",
+      "v2": "46628",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "70062",
-      "v2": "75400",
+      "v1": "46628",
+      "v2": "50796",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "75400",
-      "v2": "88488",
+      "v1": "50796",
+      "v2": "52861",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "88488",
-      "v2": "88927",
+      "v1": "52861",
+      "v2": "57269",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "88927",
-      "v2": "94263",
+      "v1": "57269",
+      "v2": "61203",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "94263",
+      "v1": "61203",
+      "v2": "68424",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "68424",
+      "v2": "73073",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "73073",
+      "v2": "78233",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "78233",
+      "v2": "84458",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "84458",
+      "v2": "90629",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "90629",
+      "v2": "98424",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "98424",
+      "v2": "99404",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "99404",
       "v2": "imports",
       "weight": "",
       "label": "",
@@ -1782,13 +2380,13 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "method-to-print-an-object",
-      "v2": "method-to-generate-blank-block-processing-object",
+      "v2": "method-to-generate-blank-block-content-object",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "method-to-generate-blank-block-processing-object",
+      "v1": "method-to-generate-blank-block-content-object",
       "v2": "method-to-generate-blank-block-dependency-graph",
       "weight": "",
       "label": "",
@@ -1796,6 +2394,13 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "method-to-generate-blank-block-dependency-graph",
+      "v2": "method-to-generate-blank-knowledge-graph",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "method-to-generate-blank-knowledge-graph",
       "v2": "method-to-hash-block-name",
       "weight": "",
       "label": "",
@@ -1810,6 +2415,27 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "utility-functions",
+      "v2": "decleration-annotation",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "decleration-annotation",
+      "v2": "invocation-annotation",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "invocation-annotation",
+      "v2": "action-annotation",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "action-annotation",
       "v2": "annotation-declerations",
       "weight": "",
       "label": "",
@@ -1817,6 +2443,27 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "annotation-declerations",
+      "v2": "initialize-doc-and-graph",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "initialize-doc-and-graph",
+      "v2": "process-decleration-annotations-in-the-block",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "process-decleration-annotations-in-the-block",
+      "v2": "process-assignment-annotations-in-the-block",
+      "weight": "",
+      "label": "",
+      "temp": {}
+    },
+    {
+      "v1": "process-assignment-annotations-in-the-block",
       "v2": "method-for-first-pass",
       "weight": "",
       "label": "",
@@ -1831,13 +2478,13 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
     },
     {
       "v1": "method-for-second-pass",
-      "v2": "generate-block-processing-order",
+      "v2": "method-to-generate-block-processing-order",
       "weight": "",
       "label": "",
       "temp": {}
     },
     {
-      "v1": "generate-block-processing-order",
+      "v1": "method-to-generate-block-processing-order",
       "v2": "generate-document-object",
       "weight": "",
       "label": "",
@@ -1895,7 +2542,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=&gt;{
   }
 }</pre></details>
             <script>
-              let dataForViz2 = {"nodes":[{"id":"12940","label":"12940 (d=1,f=2)"},{"id":"22001","label":"22001 (d=3,f=4)"},{"id":"22003","label":"22003 (d=5,f=6)"},{"id":"26817","label":"26817 (d=7,f=8)"},{"id":"36613","label":"36613 (d=9,f=10)"},{"id":"39982","label":"39982 (d=11,f=12)"},{"id":"43219","label":"43219 (d=13,f=14)"},{"id":"50614","label":"50614 (d=15,f=16)"},{"id":"52979","label":"52979 (d=17,f=18)"},{"id":"62947","label":"62947 (d=19,f=20)"},{"id":"65083","label":"65083 (d=21,f=22)"},{"id":"69384","label":"69384 (d=23,f=24)"},{"id":"70062","label":"70062 (d=25,f=26)"},{"id":"75400","label":"75400 (d=27,f=28)"},{"id":"88488","label":"88488 (d=29,f=30)"},{"id":"88927","label":"88927 (d=31,f=32)"},{"id":"94263","label":"94263 (d=33,f=34)"},{"id":"main","label":"main (d=35,f=66)"},{"id":"main-program","label":"main-program (d=67,f=68)"},{"id":"program-for-testing","label":"program-for-testing (d=69,f=70)"},{"id":"imports","label":"imports (d=36,f=37)"},{"id":"doc-conventions","label":"doc-conventions (d=71,f=72)"},{"id":"utility-functions","label":"utility-functions (d=40,f=53)"},{"id":"global-declerations","label":"global-declerations (d=38,f=39)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=41,f=42)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=43,f=44)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=45,f=46)"},{"id":"method-to-generate-blank-block-processing-object","label":"method-to-generate-blank-block-processing-object (d=47,f=48)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=49,f=50)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=51,f=52)"},{"id":"annotation-declerations","label":"annotation-declerations (d=54,f=55)"},{"id":"generate-document-object","label":"generate-document-object (d=56,f=63)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=57,f=58)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=59,f=60)"},{"id":"generate-block-processing-order","label":"generate-block-processing-order (d=61,f=62)"},{"id":"generate-output-document","label":"generate-output-document (d=64,f=65)"}],"edges":[{"from":"12940","to":"22001"},{"from":"22001","to":"22003"},{"from":"22003","to":"26817"},{"from":"26817","to":"36613"},{"from":"36613","to":"39982"},{"from":"39982","to":"43219"},{"from":"43219","to":"50614"},{"from":"50614","to":"52979"},{"from":"52979","to":"62947"},{"from":"62947","to":"65083"},{"from":"65083","to":"69384"},{"from":"69384","to":"70062"},{"from":"70062","to":"75400"},{"from":"75400","to":"88488"},{"from":"88488","to":"88927"},{"from":"88927","to":"94263"},{"from":"94263","to":"imports"},{"from":"imports","to":"global-declerations"},{"from":"global-declerations","to":"method-to-split-doc-into-blocks"},{"from":"method-to-split-doc-into-blocks","to":"method-to-generate-random-integer"},{"from":"method-to-generate-random-integer","to":"method-to-print-an-object"},{"from":"method-to-print-an-object","to":"method-to-generate-blank-block-processing-object"},{"from":"method-to-generate-blank-block-processing-object","to":"method-to-generate-blank-block-dependency-graph"},{"from":"method-to-generate-blank-block-dependency-graph","to":"method-to-hash-block-name"},{"from":"method-to-hash-block-name","to":"utility-functions"},{"from":"utility-functions","to":"annotation-declerations"},{"from":"annotation-declerations","to":"method-for-first-pass"},{"from":"method-for-first-pass","to":"method-for-second-pass"},{"from":"method-for-second-pass","to":"generate-block-processing-order"},{"from":"generate-block-processing-order","to":"generate-document-object"},{"from":"generate-document-object","to":"generate-output-document"},{"from":"generate-output-document","to":"main"},{"from":"main","to":"main-program"},{"from":"main-program","to":"program-for-testing"},{"from":"program-for-testing","to":"doc-conventions"}],"options":{"edges":{"arrows":"to"}}}
+              let dataForViz2 = {"nodes":[{"id":"11452","label":"11452 (d=1,f=2)"},{"id":"11797","label":"11797 (d=3,f=4)"},{"id":"18944","label":"18944 (d=5,f=6)"},{"id":"20888","label":"20888 (d=7,f=8)"},{"id":"23733","label":"23733 (d=9,f=10)"},{"id":"25838","label":"25838 (d=11,f=12)"},{"id":"26165","label":"26165 (d=13,f=14)"},{"id":"35441","label":"35441 (d=15,f=16)"},{"id":"40194","label":"40194 (d=17,f=18)"},{"id":"41565","label":"41565 (d=19,f=20)"},{"id":"42306","label":"42306 (d=21,f=22)"},{"id":"46205","label":"46205 (d=23,f=24)"},{"id":"46628","label":"46628 (d=25,f=26)"},{"id":"50796","label":"50796 (d=27,f=28)"},{"id":"52861","label":"52861 (d=29,f=30)"},{"id":"57269","label":"57269 (d=31,f=32)"},{"id":"61203","label":"61203 (d=33,f=34)"},{"id":"68424","label":"68424 (d=35,f=36)"},{"id":"73073","label":"73073 (d=37,f=38)"},{"id":"78233","label":"78233 (d=39,f=40)"},{"id":"84458","label":"84458 (d=41,f=42)"},{"id":"90629","label":"90629 (d=43,f=44)"},{"id":"98424","label":"98424 (d=45,f=46)"},{"id":"99404","label":"99404 (d=47,f=48)"},{"id":"main","label":"main (d=49,f=94)"},{"id":"main-program","label":"main-program (d=95,f=96)"},{"id":"program-for-testing","label":"program-for-testing (d=97,f=98)"},{"id":"imports","label":"imports (d=50,f=51)"},{"id":"doc-conventions","label":"doc-conventions (d=99,f=100)"},{"id":"utility-functions","label":"utility-functions (d=54,f=69)"},{"id":"global-declerations","label":"global-declerations (d=52,f=53)"},{"id":"method-to-split-doc-into-blocks","label":"method-to-split-doc-into-blocks (d=55,f=56)"},{"id":"method-to-generate-random-integer","label":"method-to-generate-random-integer (d=57,f=58)"},{"id":"method-to-print-an-object","label":"method-to-print-an-object (d=59,f=60)"},{"id":"method-to-generate-blank-block-content-object","label":"method-to-generate-blank-block-content-object (d=61,f=62)"},{"id":"method-to-generate-blank-block-dependency-graph","label":"method-to-generate-blank-block-dependency-graph (d=63,f=64)"},{"id":"method-to-generate-blank-knowledge-graph","label":"method-to-generate-blank-knowledge-graph (d=65,f=66)"},{"id":"method-to-hash-block-name","label":"method-to-hash-block-name (d=67,f=68)"},{"id":"annotation-declerations","label":"annotation-declerations (d=70,f=77)"},{"id":"decleration-annotation","label":"decleration-annotation (d=71,f=72)"},{"id":"invocation-annotation","label":"invocation-annotation (d=73,f=74)"},{"id":"action-annotation","label":"action-annotation (d=75,f=76)"},{"id":"generate-document-object","label":"generate-document-object (d=78,f=91)"},{"id":"method-for-first-pass","label":"method-for-first-pass (d=79,f=86)"},{"id":"initialize-doc-and-graph","label":"initialize-doc-and-graph (d=80,f=81)"},{"id":"process-decleration-annotations-in-the-block","label":"process-decleration-annotations-in-the-block (d=82,f=83)"},{"id":"process-assignment-annotations-in-the-block","label":"process-assignment-annotations-in-the-block (d=84,f=85)"},{"id":"method-for-second-pass","label":"method-for-second-pass (d=87,f=88)"},{"id":"method-to-generate-block-processing-order","label":"method-to-generate-block-processing-order (d=89,f=90)"},{"id":"generate-output-document","label":"generate-output-document (d=92,f=93)"}],"edges":[{"from":"11452","to":"11797"},{"from":"11797","to":"18944"},{"from":"18944","to":"20888"},{"from":"20888","to":"23733"},{"from":"23733","to":"25838"},{"from":"25838","to":"26165"},{"from":"26165","to":"35441"},{"from":"35441","to":"40194"},{"from":"40194","to":"41565"},{"from":"41565","to":"42306"},{"from":"42306","to":"46205"},{"from":"46205","to":"46628"},{"from":"46628","to":"50796"},{"from":"50796","to":"52861"},{"from":"52861","to":"57269"},{"from":"57269","to":"61203"},{"from":"61203","to":"68424"},{"from":"68424","to":"73073"},{"from":"73073","to":"78233"},{"from":"78233","to":"84458"},{"from":"84458","to":"90629"},{"from":"90629","to":"98424"},{"from":"98424","to":"99404"},{"from":"99404","to":"imports"},{"from":"imports","to":"global-declerations"},{"from":"global-declerations","to":"method-to-split-doc-into-blocks"},{"from":"method-to-split-doc-into-blocks","to":"method-to-generate-random-integer"},{"from":"method-to-generate-random-integer","to":"method-to-print-an-object"},{"from":"method-to-print-an-object","to":"method-to-generate-blank-block-content-object"},{"from":"method-to-generate-blank-block-content-object","to":"method-to-generate-blank-block-dependency-graph"},{"from":"method-to-generate-blank-block-dependency-graph","to":"method-to-generate-blank-knowledge-graph"},{"from":"method-to-generate-blank-knowledge-graph","to":"method-to-hash-block-name"},{"from":"method-to-hash-block-name","to":"utility-functions"},{"from":"utility-functions","to":"decleration-annotation"},{"from":"decleration-annotation","to":"invocation-annotation"},{"from":"invocation-annotation","to":"action-annotation"},{"from":"action-annotation","to":"annotation-declerations"},{"from":"annotation-declerations","to":"initialize-doc-and-graph"},{"from":"initialize-doc-and-graph","to":"process-decleration-annotations-in-the-block"},{"from":"process-decleration-annotations-in-the-block","to":"process-assignment-annotations-in-the-block"},{"from":"process-assignment-annotations-in-the-block","to":"method-for-first-pass"},{"from":"method-for-first-pass","to":"method-for-second-pass"},{"from":"method-for-second-pass","to":"method-to-generate-block-processing-order"},{"from":"method-to-generate-block-processing-order","to":"generate-document-object"},{"from":"generate-document-object","to":"generate-output-document"},{"from":"generate-output-document","to":"main"},{"from":"main","to":"main-program"},{"from":"main-program","to":"program-for-testing"},{"from":"program-for-testing","to":"doc-conventions"}],"options":{"edges":{"arrows":"to"}}}
               const container2 = document.getElementById('graph2')
               const data2 = {
                 nodes: new vis.DataSet(dataForViz2.nodes),
