@@ -111,6 +111,8 @@ The above can be understood more easily with some examples:
 (all the above produces the same output)
 - hash("+block name") = "block-name"
 
+\[todo:implement this] Some block names are reserved for some special purpose.
+
 Now, the most important part of the programs. The annotation declarations. 
 
 What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations makes the document more structured and provides a way to extract "knowledge" from the document which can be further processed.  
@@ -181,10 +183,23 @@ invocation: {
 .[action annotation]
 action: {
   extract: (text) => {
+    const txt = text.trim()
+      const theRegex = /\/\[([\s\w\:\,\=\%\.\_\-\/]+?)\]/gm
+      const parts = txt.match(theRegex)
+      let actions = []
+      if(parts){
+        parts.map(part=>{
+          let t = part.replaceAll("/[","")
+          t = t.replaceAll("]","")
+          let actionInfo = parseActionArguments(t)
+          actions.push({ rawSource: part, ...actionInfo  })
+        })
+      }
+      return actions
   }
 }
 
-action annotations allows one to do a lot of things. 
+Action annotations allows one to do a lot of things. 
 
 How to specify them : withing the "/[]" delimiter. one action per bracket. to define multiple actions, use multiple brackets
 Each action has a format : "action-name : arguments". E.g. /[todo: do nothing.just a demo]
@@ -204,21 +219,76 @@ Here are a few ways in which we can call a function in js:
 - fn({arg1:val,arg2:val}): similar to last one. now the function has a single argumnet which is an object ; position also does not matter
 (in the last 2 we need to remember the names of arguments, which is better than remembering their position as in the first case)
 
-The question is how to specify actions arguments ?
+.[about action args] The question is how to specify actions arguments ?
 The format of specifying the action itself is fixed i.e. "action-name : arguments"
 In most cases there will be a single argument. like : "todo:this" where "this" will the value of the argument named "text". this is the default functioning. if the action has a single agrument then it will be named "text" by default.
 But some actions might require multiple arguments. for instance  when specifying the data type of a block as a resource, we also need to specify the location of the resource. 
 This makes life simple: if an action has a single argument, no argument name required
 In case of actions with multiple arguments, the first argument is always named "text". all other arguments must be named. 
-What will be the format of naming them ? : "action-name: text, arg-name='arg-value', arg-name2='arg-value2' " (except for the first argument, all other arguments are within single quotes)
-As an example : /[type:resource, location='/path/to/file.pdf' down='true']
+What will be the format of naming them ? : "action-name: text, arg-name= arg-value , arg-name2= arg-value2  "
+- arguments are sperated by comma (which means argument content cannot contain comma \[todo: fix this is later version] )
+As an example : /[data:resource, location= /path/to/file.pdf , down= true ]
+
+Every action will have some common arguments :
+text - this is the defult first arguments
+d - this is a flag (either 0 or 1, 0 by default) : it's value indicate whether to display the content of this action annotation in the final block content or hide it. what value is shown depends on the action. for instace in a todo action if d=1, then "(Todo: text-content )" is included in the final block value where this todo action was specified. 
+
+What does it actaully mean to process an action ?
+or what are the possible things actions can do?
+they can :
+- modifiy the content of the block in which they are defined 
+- add a new edge in the knowldege graph 
+
 
 Here's how to process various actions 
 
 .[action declerations]
 const parseActionArguments = (argumentText)=>{
+  let result = { action:"", arguments:{ text:"",d:"0"}}
+  const parts = argumentText.split(":")
+  result.action = parts[0].trim()
+  if(parts.length > 1){
+    let argParts = parts[1].split(",")
+    if(argParts.length>0){
+      result.arguments['text'] = argParts[0].trim()
+      argParts.shift()
+      argParts.map(argu=>{
+        let ar = argu.split("=")
+        result.arguments[ar[0].trim()] = ar[1].trim()
+      })
+    }
+  }
+  return result
 }
-const actions = {}
+const actions = {
+  'data': {
+    'about':'To declare data type for a block',
+    'process':()=>{},
+    'generateText':()=>{}
+  },
+  'graph' :{
+    'about':'to add an edge in the knowledge graph'
+  }
+}
+
+testing this :
+
+.[testing actions]
+  >[action declerations]
+  >[Annotation declerations]
+  const testActionArguments = ()=>{
+    console.log(parseActionArguments("test-action1"))
+    console.log(parseActionArguments("test-action2:this is just one test argument"))
+    console.log(parseActionArguments("test-action3:one, two = tr , three =  this is good  , four= jha ha haa "))
+    console.log(parseActionArguments(""))
+  }
+  const testActionExtractions = ()=>{
+    console.log(annotations.action.extract(`this is the text /[type:one] , /[type1:two, three=four  , five= six seven] , /[eight ] `))
+    console.log(annotations.action.extract(`>[about action args]`))
+  }
+  testActionArguments()
+  testActionExtractions()
+
 
 including it in the global declerations:
 
@@ -228,23 +298,84 @@ including it in the global declerations:
 Now we must also talk about processing various datatypes available : 
 
 .[data type processing decleration]
+const parseDefaultData = (blockText)=>{
+    let data = {text: blockText , title: blockText , noLines: 0, linesWithoutTitle:[] }
+    let lines = blockText.split("\n")
+    const noOfLines = lines.length
+    data.noLines = noOfLines
+    if(noOfLines > 1){ data.title = lines[0] }
+    lines.shift()
+    data.linesWithoutTitle = lines
+    return data
+}
 const dataType = {
-  "key-value":(blocktext)=>{},
-  "table":(blockText) => {},
-  "list":(blockText)=>{},
+  "key-value":(blockText)=>{
+    let initialData = parseDefaultData(blockText)
+    let keyValueData = {}
+    initialData.linesWithoutTitle.map(line=>{
+      let l = line.replace("-","").trim()
+      const parts = l.split(":")
+      keyValueData[parts[0].trim()] = parts[1].trim()
+    })
+    initialData.linesWithoutTitle=[]
+    initialData.keyValueData = keyValueData
+    initialData.type = "key-value"
+    return initialData    
+  },
+  "csv":(blockText) => {
+    let initialData = parseDefaultData(blockText)
+    let csvData = []
+    initialData.linesWithoutTitle.map(line=>{
+      let l = line.replace("-","").trim()
+      const parts = l.split(",")
+      csvData.push(parts)
+    })
+    initialData.linesWithoutTitle=[]
+    initialData.csvData = csvData
+    initialData.type = "csv"
+    return initialData
+  },
+  "list":(blockText)=>{
+    let initialData = parseDefaultData(blockText)
+    let listData = ['index item added by default']
+    initialData.linesWithoutTitle.map(line=>{
+      let l = line.replace("-","").trim()
+      listData.push(l)
+    })
+    initialData.linesWithoutTitle=[]
+    initialData.listData = listData
+    initialData.type = "list"
+    return initialData
+  },
   "resource":(blockText)=>{},
-  "code":(blockText)=>{},
-  "defualt":(blockText)=>{}
+  "default":(blockText)=>{
+    let data = parseDefaultData(blockText)
+    data.type = "default"
+    return data
+  }
 }
 
-including it in the global declerations:
+.[Data type testing]
+  >[data type processing decleration]
+  let data = [
+    { type:"default", value:`>[default text block 1]`},
+    { type:"default", value:`>[default mutliline block]`},
+    {type:'csv',value:`>[table example]` },
+    {type:'key-value',value:`>[key value store example]` },
+    {type:'list',value:`>[list example]` },
+  ]
+  data.map(dt=>{console.log(dataType[dt.type](dt.value))})
+
+Including it in the global declerations:
 
 .[+global declerations]
   >[data type processing decleration]
 
 Processing data types : 
+Note that the data type values must be processed only after the complete text value of the block is obtained. 
 
 Default:
+
 .[default text block 1] this is a block content. plain , simple text
 
 .[default mutliline block] this is the title of the block
@@ -252,26 +383,32 @@ this block is multiline.
 the first line in a multiline block is always it's title. this is particularly useful when creating knowledge graphs.
 
 Key value store :
-.[key value store example] /[type:key-value] This is the title of the key value store
+
+.[key value store example] /[data:key-value] This is the title of the key value store
 - key1 : value of key 1
 - key2: value of key2
 
 List :
-.[list example] /[type:list] this is similar to key value pair
+
+.[list example] /[data:list] this is similar to key value pair
 - item 1 
 - item 2
 - item 3
 - at this point i will just have the single level of list 
 
 Table:
-.[table example] /[type:table , cols='col1,col2,col3' , spliter=';']
-- row1-col1; row1-col2 ; row1-col3
-- row2-col1; row2-col2 ; row2-col3
+
+.[table example] /[data:csv] this is the title of the csv data
+- col1 label, col2 label, col 3 label 
+- 1,2,3
+- 3,4,5
+- 6,7,8
+
 
 Resource: a block can also be an external resource 
-.[external resource] /[type:res loc="path/to/file"]
+.[external resource] /[data:resource , loc = path/to/file]
 
-its usage: now we can access specific parts of a block in invocation annotations. For examples:
+Its usage: now we can access specific parts of a block in invocation annotations. For examples:
 - here is the value of the key named key1 in the block name "key value pair example" : >[key value pair example.key1]
 - here is value of 1st item in the list "list example" : >[list example.1]
 - here is the value from the 1st row and col1 from "table example" : >[table example.1.col1]
@@ -313,8 +450,9 @@ once we have an array of blocks, we need to iterate through all the blocks to do
 the second pass through the blocks :
 in the second iteration, we assume that we have an order in which all the blocks of the document must be processed.
 What does that processing looks like:
-Replacing all invocation annotations with actual block text. 
-Replacing all action annotations with appropriate values (some needs to be removed, some needs to be replaced with a string)
+- Replacing all invocation annotations with actual block text. 
+- Replacing all action annotations with appropriate values (some needs to be removed, some needs to be replaced with a string) This includes processing the data type of the block. 
+
 
 
 .[Generate document object]
