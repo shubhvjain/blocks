@@ -35,6 +35,14 @@ const generateExplorerDocForDocUsingTest = async (docPath)=>{
   console.log(`generated : test/explorer-${name}.html`)
 }
 
+const generateCodeFileFromSomeSource = async (docPath,fileName,blockName)=>{
+  let fileContent = await getFile(docPath)
+  // todo change generateDocument to  generateOutputDoc after new release
+  const processedDoc  = blockLatest.generateDocument(fileContent,{main:blockName})
+  await saveFile(`test/${fileName}`,processedDoc)
+  console.log(`test/${fileName} created!`)
+}
+
 const main = async ()=>{
   const cmdName = process.argv[2]
   cmds = {
@@ -44,7 +52,7 @@ const main = async ()=>{
 1: generate test/block.js using release/block.js
 2: generate explorer doc for source/block.txt using release/block.js
 3: generate explorer doc for source/block.txt using test/block.js
-4: generate explorer doc for specified input file (saved in the test folder)
+4: generate test file also give 'path-to-source-file' 'filename' 'block-id' (new file will be stored in test folder only)
 `
       console.log(help)
     },
@@ -56,8 +64,8 @@ const main = async ()=>{
       await generateExplorerDocForSourceUsingTest()
     },
     4: async ()=>{
-
-    }
+      await generateCodeFileFromSomeSource(process.argv[3],process.argv[4],process.argv[5])
+    },
   }
   if(!cmds[cmdName]){throw new Error("invalid command. use '0' for list of available commands")}
   await cmds[cmdName]()
