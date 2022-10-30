@@ -8,7 +8,16 @@ This program takes in an annotated document (a collection of blocks) , processes
 - title : The source code of the block program written in the block program
 - version: 0.2.0
 
-Here is the main program that does that : 
+.[Todo for next version] /[data:list]
+- indexing and accessing sub elements of special data type in invocation annotation
+- add test files and look into automated testing 
+- look into knowledge graph queries
+- add more error handing 
+- simplify the way to add edges in knowledge graph, include a way to used the predefined edge labels (so that the dirction, label is consistent)
+- individual processing of action annotation after successful processing (currently they are just removed from the text)
+- implment resource and resource-list data type
+
+Here is the main program : 
 
 .[Main]
   >[Imports]
@@ -189,7 +198,7 @@ invocation: {
 action: {
   extract: (text) => {
     const txt = text.trim()
-      const theRegex = /\/\[([\s\w\:\,\=\%\.\_\-\/]+?)\]/gm
+      const theRegex = /\/\[([\s\w\:\,\=\%\.\_\-\/\>\<]+?)\]/gm
       const parts = txt.match(theRegex)
       let actions = []
       if(parts){
@@ -246,6 +255,11 @@ They can :
 
 Here's how to process various actions 
 
+A note on creating new action type methods:
+- for each action , one must define : about (a note on what this action does) , process (a method to process the action) , generateText (a method to replace action annotation raw text with some value after successfully processing the action)
+- the action process method takes in 2 argument : the actionData (which contain action, arguments) , blockData (which mainly contains text)
+- the action process method must return :  newBlockContentFields , newKnowledgeGraphEdge
+
 .[action declarations]
 const parseActionArguments = (argumentText)=>{
   let result = { action:"", arguments:{ text:"",d:"0"}}
@@ -268,7 +282,6 @@ const actions = {
   'data': {
     'about':'To declare data type for a block',
     'process':(actionData,blockData)=>{
-      // newBlockContentFields, newKnowledgeGraphEdge
       let selectedDataType = actionData.arguments.text
       let processedData = dataType[selectedDataType](blockData.text)
       return { newBlockDataFields : processedData  }
@@ -278,11 +291,41 @@ const actions = {
   'graph' :{
     'about':'to add an edge in the knowledge graph',
     'process': (actionData,blockData)=>{
+      let newEdge = {v1:"",v2:"",label:""}
+      let text = actionData.arguments.text
+      if(text.indexOf('->') > -1){
+        newEdge.v1 = blockData.id
+        let parts = text.split("->")
+        newEdge.label = parts[0].trim()
+        let theblock = hashBlockId(parts[1].trim())
+        newEdge.v2 = theblock.id
+      }else if(text.indexOf('<-') > -1){
+        newEdge.v2 = blockData.id
+        let parts = text.split("<-")
+        newEdge.label = parts[0].trim()
+        let theblock = hashBlockId(parts[1].trim())
+        newEdge.v1 = theblock.id
+      }
+      return {newKnowledgeGraphEdge : newEdge }
     }
   }
 }
 
-testing this :
+How to add an edge in the knowledge graph ?
+Using action annotation "graph"
+Format : graph: {edge label} {arrow} {block name}
+- For this edge : {current block} --(edge label)---> {block id} , the action annotation will be : "graph: edge label  -> block name"
+- For the edge : {current block}  <--(edge label)--- {block id} , action annotation will be : "graph: edge label <- block name"
+
+Eg:
+
+.[c1] /[graph: current to specified -> c2] Hello c1
+
+.[c2] /[graph: specified to current <- c3] Hello c2
+
+.[c3] Hello c3
+
+Testing some parts of the code :
 
 .[testing actions]
   >[action declarations]
@@ -374,7 +417,12 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData
   },
-  "resource":(blockText)=>{},
+  "resource":(blockText)=>{
+    let initialData = parseDefaultData(blockText)
+    initialData.type = "resource"
+    delete initialData.linesWithoutTitle
+    return initialData
+  },
   "resource-list":(blockText)=>{
     let initialData = parseDefaultData(blockText)
     let resourceData = {}
@@ -610,6 +658,7 @@ specialBlocks.map(sblock  => {
     annotations: { d:{ }, i:{valid: []}, at:{valid: [{action:"data",arguments:{"text": sblock.type }}]}}
   }
   g = graph.addVertex(g,{id:sblock.name})
+  kg = graph.addVertex(kg,{id:sblock.name})
 })
 
 .[process decleration annotations]
@@ -624,6 +673,7 @@ if(d.blocks.indexOf(newBlock.id)==-1){
   }
   d.data[newBlock.id] = data
   g = graph.addVertex(g,{id:newBlock.id})
+  kg = graph.addVertex(kg,{id:newBlock.id})
 }else{
   if(newBlock.isAppend){
     d.data[newBlock.id]['text'] += processedText
@@ -694,17 +744,36 @@ if(validAnn.length > 0){
 let validAct = docObj['data'][v.vertexId]['annotations']['at']['valid']
 if(validAct.length > 0){
   validAct.map(act=>{
-    //console.log(act)
-    if(actions[act.action]){
-      let actionEval = actions[act.action]['process'](act,docObj['data'][v.vertexId])
-      //console.log(actionEval)
-      if(actionEval.newBlockDataFields){
-        let newBlockData = { ... docObj['data'][v.vertexId], ... actionEval.newBlockDataFields  }
-        //console.log(newBlockData)
-        docObj['data'][v.vertexId] = newBlockData
-      }
-    }
-  }) 
+    >[execute the action and process it]
+  })
+  let mainText2 = docObj['data'][v.vertexId]['text']
+  let titleText = docObj['data'][v.vertexId]['title']
+  validAct.map(act=>{
+    >[replace action annotations from block text and title]
+  })
+  docObj['data'][v.vertexId]['text'] = mainText2
+  docObj['data'][v.vertexId]['title'] = titleText 
+}
+
+Why 2 loops above ?
+Because the title and text is processed by the "data" action which means they must first exists to be replaced. so in the first loop the actions are executed and replacements are made in the 2nd loop
+
+.[execute the action and process it]
+if(actions[act.action]){
+  let actionEval = actions[act.action]['process'](act,{...docObj['data'][v.vertexId], id: v.vertexId })
+  if(actionEval.newBlockDataFields){
+    let newBlockData = { ... docObj['data'][v.vertexId], ... actionEval.newBlockDataFields  }
+    docObj['data'][v.vertexId] = newBlockData
+  }
+  if(actionEval.newKnowledgeGraphEdge){
+    kGraph = graph.addEdge(kGraph,actionEval.newKnowledgeGraphEdge)
+  }
+}
+
+.[replace action annotations from block text and title]
+if(act.rawSource){
+  mainText2 = mainText2.replaceAll(`${act.rawSource}`," ")
+  titleText = titleText.replaceAll(`${act.rawSource}`," ") 
 }
 
 Phew! the main part of the program is done! Now, given a document, we can generate a document Object for it which consists of blockContent, blockDependencyGraph, blockProcessingOrder and knowlegeGraph 
