@@ -3,7 +3,6 @@
   
 const graph = require('./graph')
   
-  const BlockSplitCharacter = "\n"
   
 const annotations = {
   
@@ -45,7 +44,7 @@ invocation: {
 action: {
   extract: (text) => {
     const txt = text.trim()
-      const theRegex = /\/\[([\s\w\:\,\=\%\.\_\-\/]+?)\]/gm
+      const theRegex = /\/\[([\s\w\:\,\=\%\.\_\-\/\>\<]+?)\]/gm
       const parts = txt.match(theRegex)
       let actions = []
       if(parts){
@@ -83,7 +82,6 @@ const actions = {
   'data': {
     'about':'To declare data type for a block',
     'process':(actionData,blockData)=>{
-      // newBlockContentFields, newKnowledgeGraphEdge
       let selectedDataType = actionData.arguments.text
       let processedData = dataType[selectedDataType](blockData.text)
       return { newBlockDataFields : processedData  }
@@ -91,7 +89,25 @@ const actions = {
     'generateText':()=>{}
   },
   'graph' :{
-    'about':'to add an edge in the knowledge graph'
+    'about':'to add an edge in the knowledge graph',
+    'process': (actionData,blockData)=>{
+      let newEdge = {v1:"",v2:"",label:""}
+      let text = actionData.arguments.text
+      if(text.indexOf('->') > -1){
+        newEdge.v1 = blockData.id
+        let parts = text.split("->")
+        newEdge.label = parts[0].trim()
+        let theblock = hashBlockId(parts[1].trim())
+        newEdge.v2 = theblock.id
+      }else if(text.indexOf('<-') > -1){
+        newEdge.v2 = blockData.id
+        let parts = text.split("<-")
+        newEdge.label = parts[0].trim()
+        let theblock = hashBlockId(parts[1].trim())
+        newEdge.v1 = theblock.id
+      }
+      return {newKnowledgeGraphEdge : newEdge }
+    }
   }
 } 
  
@@ -162,7 +178,12 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData
   },
-  "resource":(blockText)=>{},
+  "resource":(blockText)=>{
+    let initialData = parseDefaultData(blockText)
+    initialData.type = "resource"
+    delete initialData.linesWithoutTitle
+    return initialData
+  },
   "resource-list":(blockText)=>{
     let initialData = parseDefaultData(blockText)
     let resourceData = {}
@@ -184,7 +205,31 @@ const dataType = {
     delete data.linesWithoutTitle
     return data
   }
-}
+} 
+ 
+  
+const specialBlocks = [
+  {
+    name: "outputs",
+    type:"key-value",
+    note:"To store various output files that can be generated using this doc"
+  },
+  {
+    name: "metadata",
+    type:"key-value",
+    note:"some meta data related to the doc"
+  },
+  {
+    name: "graph-edge-names",
+    type:"key-value",
+    note:"to keep metadata realted to graph edges in the knowledge graph"
+  },
+  {
+    name: "graph-queries",
+    type:"key-value",
+    note:"to store knowledge graph queries "
+  }
+] 
   
   
 const docToBlocks = (doc,splitter)=>{ return doc.split(splitter)}
@@ -226,6 +271,17 @@ const firstPass = (blocks) => {
   let g = getBlankDepGraph()
   let kg = getBlankKnowledgeGraph()
   let edgesToAdd = []
+  
+specialBlocks.map(sblock  => {
+  d.blocks.push(sblock.name)
+  d.data[sblock.name] = {
+    rawText: [],
+    text:"",
+    annotations: { d:{ }, i:{valid: []}, at:{valid: [{action:"data",arguments:{"text": sblock.type }}]}}
+  }
+  g = graph.addVertex(g,{id:sblock.name})
+  kg = graph.addVertex(kg,{id:sblock.name})
+})
   blocks.map((block,index)=>{
     if(block){
         
@@ -240,6 +296,7 @@ if(d.blocks.indexOf(newBlock.id)==-1){
   }
   d.data[newBlock.id] = data
   g = graph.addVertex(g,{id:newBlock.id})
+  kg = graph.addVertex(kg,{id:newBlock.id})
 }else{
   if(newBlock.isAppend){
     d.data[newBlock.id]['text'] += processedText
@@ -293,17 +350,29 @@ if(validAnn.length > 0){
 let validAct = docObj['data'][v.vertexId]['annotations']['at']['valid']
 if(validAct.length > 0){
   validAct.map(act=>{
-    //console.log(act)
-    if(actions[act.action]){
-      let actionEval = actions[act.action]['process'](act,docObj['data'][v.vertexId])
-      //console.log(actionEval)
-      if(actionEval.newBlockDataFields){
-        let newBlockData = { ... docObj['data'][v.vertexId], ... actionEval.newBlockDataFields  }
-        //console.log(newBlockData)
-        docObj['data'][v.vertexId] = newBlockData
-      }
-    }
-  }) 
+    
+if(actions[act.action]){
+  let actionEval = actions[act.action]['process'](act,{...docObj['data'][v.vertexId], id: v.vertexId })
+  if(actionEval.newBlockDataFields){
+    let newBlockData = { ... docObj['data'][v.vertexId], ... actionEval.newBlockDataFields  }
+    docObj['data'][v.vertexId] = newBlockData
+  }
+  if(actionEval.newKnowledgeGraphEdge){
+    kGraph = graph.addEdge(kGraph,actionEval.newKnowledgeGraphEdge)
+  }
+}
+  })
+  let mainText2 = docObj['data'][v.vertexId]['text']
+  let titleText = docObj['data'][v.vertexId]['title']
+  validAct.map(act=>{
+    
+if(act.rawSource){
+  mainText2 = mainText2.replaceAll(`${act.rawSource}`," ")
+  titleText = titleText.replaceAll(`${act.rawSource}`," ") 
+}
+  })
+  docObj['data'][v.vertexId]['text'] = mainText2
+  docObj['data'][v.vertexId]['title'] = titleText 
 }
   })
   return {blockContent: docObj, knowledgeGraph: kGraph }
