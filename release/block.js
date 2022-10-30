@@ -1,25 +1,26 @@
 /*** 
-The Block program. Version 0.2.0 . 
+the Block program. Version 0.5.0 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
-
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
-
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
-
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/> 
-
 ***/
 
+  
+  
 const graph = require('./graph')
-const annotations = {  
+  
+  
+const annotations = {
+  
 declaration: {
   extract:(text)=>{
       const tx = text.trim()
@@ -37,6 +38,7 @@ declaration: {
       return text.replaceAll(theRegex,"")
     }
 },
+  
 invocation: {
     extract: (text) =>{
       const txt = text.trim()
@@ -53,6 +55,7 @@ invocation: {
       return asmts
     }
 },
+  
 action: {
   extract: (text) => {
     const txt = text.trim()
@@ -70,8 +73,8 @@ action: {
       return actions
   }
 }
-} 
- 
+}
+  
 const parseActionArguments = (argumentText)=>{
   let result = { action:"", arguments:{ text:"",d:"0"}}
   const parts = argumentText.split(":")
@@ -120,8 +123,7 @@ const actions = {
       return {newKnowledgeGraphEdge : newEdge }
     }
   }
-} 
- 
+}
   
 const parseDefaultData = (blockText)=>{
     let data = {title: blockText , noLines: 0, linesWithoutTitle:[] }
@@ -216,8 +218,7 @@ const dataType = {
     delete data.linesWithoutTitle
     return data
   }
-} 
- 
+}
   
 const specialBlocks = [
   {
@@ -464,4 +465,4 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
   const docContent = await  docTypes[options.type]()
   return docContent
 }
-module.exports = { generateDocObject, generateOutputDoc }
+  module.exports = { generateDocObject, generateOutputDoc }
