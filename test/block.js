@@ -58,8 +58,7 @@ action: {
       return actions
   }
 }
-} 
- 
+}
   
 const parseActionArguments = (argumentText)=>{
   let result = { action:"", arguments:{ text:"",d:"0"}}
@@ -109,8 +108,7 @@ const actions = {
       return {newKnowledgeGraphEdge : newEdge }
     }
   }
-} 
- 
+}
   
 const parseDefaultData = (blockText)=>{
     let data = {title: blockText , noLines: 0, linesWithoutTitle:[] }
@@ -205,8 +203,7 @@ const dataType = {
     delete data.linesWithoutTitle
     return data
   }
-} 
- 
+}
   
 const specialBlocks = [
   {
@@ -398,7 +395,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
     "file-with-entry": async ()=>{
       if(!options.main){throw new Error("Specify the main block Id which contains the code")}
       const Document = generateDocObject(doc,options) 
-      return Document['docObject']['data'][options.main]['text']
+      return Document['blockContent']['data'][options.main]['text']
     },
     "explorer": async ()=>{
       const Document = generateDocObject(doc,options) 

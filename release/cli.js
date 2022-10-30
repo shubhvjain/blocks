@@ -27,7 +27,7 @@ const main = async ()=>{
       if(!entryBlock){throw new Error("Provide entry block name")}
 
       const doc = await getFile(inputPath)
-      const processedDoc  = block.generateDocument(doc,{main:entryBlock})
+      const processedDoc  = await block.generateOutputDoc(doc,{type:"file-with-entry", main:entryBlock})
       await saveFile(outputPath,processedDoc)
       console.log("Done!")
    }

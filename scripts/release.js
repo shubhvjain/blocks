@@ -99,7 +99,7 @@ const main = async () => {
 
     await updateDeps()
     const blockFile = await getFile("./source/block.txt")
-    const codeFileContent =  currentBlock.generateDocument(blockFile,{main:"main-program"})
+    const codeFileContent = await  currentBlock.generateOutputDoc(blockFile,{main:"main-program",type:"file-with-entry"})
     const newCopyRightAndVersion = await newHeader({releaseType })
     const fullText = `${newCopyRightAndVersion.header}${codeFileContent}`
     await saveFile('./release/block.js',fullText)

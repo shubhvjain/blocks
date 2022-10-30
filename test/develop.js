@@ -11,8 +11,7 @@ const blockTest = require("../test/block")
 // this will generate the latest test version of block.js (inside the test folder) using the latest released version of the block program
 const generateTestBlockCodeUsingLatestRelease = async ()=>{
   let fileContent = await getFile("source/block.txt")
-  // todo change generateDocument to  generateOutputDoc after new release
-  const processedDoc  = blockLatest.generateDocument(fileContent,{main:"program-for-testing"})
+  const processedDoc  = await blockLatest.generateOutputDoc(fileContent,{type:"file-with-entry" ,main:"program-for-testing"})
   await saveFile("test/block.js",processedDoc)
   console.log("test/block.js updated!")
 }
@@ -37,8 +36,7 @@ const generateExplorerDocForDocUsingTest = async (docPath)=>{
 
 const generateCodeFileFromSomeSource = async (docPath,fileName,blockName)=>{
   let fileContent = await getFile(docPath)
-  // todo change generateDocument to  generateOutputDoc after new release
-  const processedDoc  = blockLatest.generateDocument(fileContent,{main:blockName})
+  const processedDoc  = await blockLatest.generateOutputDoc(fileContent,{type:"file-with-entry", main:blockName})
   await saveFile(`test/${fileName}`,processedDoc)
   console.log(`test/${fileName} created!`)
 }
