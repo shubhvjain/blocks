@@ -101,14 +101,27 @@ const parseDefaultData = (blockText)=>{
     data.linesWithoutTitle = lines
     return data
 }
+const stringToObject = (text)=>{
+  // string is of the form "title: one = two , three = four, five = six"
+  let parts1 =  text.split(':')
+  let data = {}
+  let fields = parts1[1].split(",")
+  fields.map(field=>{
+    let v = field.split("=")
+    data[ v[0].trim() ] = v[1].trim()
+  })
+  return { key: parts1[0].trim() , value : data  }
+}
 const dataType = {
   "key-value":(blockText)=>{
     let initialData = parseDefaultData(blockText)
     let keyValueData = {}
     initialData.linesWithoutTitle.map(line=>{
       let l = line.replace("-","").trim()
-      const parts = l.split(":")
-      keyValueData[parts[0].trim()] = parts[1].trim()
+      if(l.trim().length>0){
+        const parts = l.split(":")
+        keyValueData[parts[0].trim()] = parts[1].trim()
+      }
     })
     initialData.linesWithoutTitle=[]
     initialData.keyValueData = keyValueData
@@ -120,8 +133,10 @@ const dataType = {
     let csvData = []
     initialData.linesWithoutTitle.map(line=>{
       let l = line.replace("-","").trim()
-      const parts = l.split(",")
-      csvData.push(parts)
+      if(l.trim().length>0){
+        const parts = l.split(",")
+        csvData.push(parts)
+      }
     })
     initialData.linesWithoutTitle=[]
     initialData.csvData = csvData
@@ -133,7 +148,9 @@ const dataType = {
     let listData = ['index item added by default']
     initialData.linesWithoutTitle.map(line=>{
       let l = line.replace("-","").trim()
-      listData.push({text:l})
+      if(l.trim().length>0){
+        listData.push({text:l})
+      }
     })
     initialData.linesWithoutTitle=[]
     initialData.listData = listData
@@ -141,7 +158,21 @@ const dataType = {
     return initialData
   },
   "resource":(blockText)=>{},
-  "resource-list":(blockText)=>{},
+  "resource-list":(blockText)=>{
+    let initialData = parseDefaultData(blockText)
+    let resourceData = {}
+    initialData.linesWithoutTitle.map(line=>{
+      let l = line.replace("-","").trim()
+      if(l.trim().length>0){
+        let parsedObj = stringToObject(l)
+        resourceData[parsedObj.key] = parsedObj.value
+      }
+    })
+    initialData.linesWithoutTitle=[]
+    initialData.resourceListData = resourceData
+    initialData.type = "resource-list"
+    return initialData
+  },
   "default":(blockText)=>{
     let data = parseDefaultData(blockText)
     data.type = "default"
@@ -220,7 +251,14 @@ allAsmts.map(itm=>{
   }
 })
         
-const allActions = annotations.action.extract(block)
+  
+let allActions = annotations.action.extract(block)
+  
+let lookForDataType = allActions.find(itm=>{return itm.action == 'data' } )
+if(!lookForDataType){
+  allActions.push({ action:"data", arguments:{ text:"default",d:"0"}})
+}
+  
 if(!d.data[newBlock.id]['annotations']['at']['valid']){
   d.data[newBlock.id]['annotations']['at']['valid'] = []
 }

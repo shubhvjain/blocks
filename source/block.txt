@@ -456,7 +456,6 @@ Resource: a block can also be an external resource
 - keyForRes2 : remote-path = http something , title = something
 
 
-
 More on resource data type :
 - the resource path can be offline or online or both (in case of both, offline is preferred)
 - technical note: resources are fetched on demand i.e. only when required in any output document generation part and not while generating the Document object.  
@@ -467,8 +466,6 @@ More on resource data type :
 - online path :
    - e.g. "data:resource remote-path=https://website.com/some/file.png"
    - it need not be a file. it can also be a web page (in that case a copy of the webpage will be fetched) 
-
-
 
 What's the point of defining a data type for a block ?
 Now we can access specific parts of a block in invocation annotations. For examples:
@@ -517,7 +514,6 @@ in the second iteration, we assume that we have an order in which all the blocks
 What does that processing look like:
 - Replacing all invocation annotations with actual block text. 
 - Replacing all action annotations with appropriate values (some need to be removed, some need to be replaced with a string) This includes processing the data type of the block. 
-
 
 .[Generate document object]
   >[Method for First pass]
@@ -587,7 +583,20 @@ allAsmts.map(itm=>{
 })
 
 .[process action annotations in the block]
-const allActions = annotations.action.extract(block)
+  >[extract action annotations in block]
+  >[add default data type]
+  >[add extracted annotation in block content]
+
+.[extract action annotations in block]
+let allActions = annotations.action.extract(block)
+
+.[add default data type]
+let lookForDataType = allActions.find(itm=>{return itm.action == 'data' } )
+if(!lookForDataType){
+  allActions.push({ action:"data", arguments:{ text:"default",d:"0"}})
+}
+
+.[add extracted annotation in block content]
 if(!d.data[newBlock.id]['annotations']['at']['valid']){
   d.data[newBlock.id]['annotations']['at']['valid'] = []
 }
@@ -613,8 +622,6 @@ const processBlocksInOrder = (docObj, vertexOrder) => {
 
 .[Method to generate block processing order]
 const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
-
-
 
 Phew! the main part of the program is done! Now, given a document, we can generate a document Object for it which consists of blockContent, blockDependencyGraph, blockProcessingOrder and knowlegeGraph 
 Now we can focus on generating outputs from this document. By utilizing all the objects generated for this document we can generate all sorts of documents. For instance, we can save the content of a certain block as a file. This block can be a fully functional program.
