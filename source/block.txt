@@ -4,11 +4,15 @@ This program takes in an annotated document (a collection of blocks) , processes
 - "blockProcessingOrder" : the order in which the blocks must be processed to ensure that, for all blocks, their dependencies are processed before it
 - "knowledgeGraph" : a graph that stores user defined relations between blocks, which are defined in the document using action annotations 
 
+.[+Metadata]
+- title : The source code of the block program written in the block program
+- version: 0.2.0
+
 Here is the main program that does that : 
 
 .[Main]
   >[Imports]
-  >[Global Declerations]
+  >[Global Declarations]
   >[Utility Functions]
   >[Generate document object]
   >[Generate output document]
@@ -58,9 +62,8 @@ So let's create a new global declaration for that
 .[+Doc conventions]
 - global declaration/variables names are in camel case and begin with upper case
 
-.[Global declerations]
-  const BlockSplitCharacter = "\n"
-  >[Annotation declerations]
+.[Global declarations]
+  >[Annotation declarations]
 
 .[Method to split Doc into blocks]
 const docToBlocks = (doc,splitter)=>{ return doc.split(splitter)}
@@ -134,7 +137,7 @@ For each type of annotation, we need to specify a few things :
 
 Here is the main object where all annotations are defined :
 
-.[Annotation declerations]
+.[Annotation declarations]
 const annotations = {
   >[decleration annotation],
   >[invocation annotation],
@@ -243,7 +246,7 @@ They can :
 
 Here's how to process various actions 
 
-.[action declerations]
+.[action declarations]
 const parseActionArguments = (argumentText)=>{
   let result = { action:"", arguments:{ text:"",d:"0"}}
   const parts = argumentText.split(":")
@@ -273,15 +276,17 @@ const actions = {
     'generateText':()=>{}
   },
   'graph' :{
-    'about':'to add an edge in the knowledge graph'
+    'about':'to add an edge in the knowledge graph',
+    'process': (actionData,blockData)=>{
+    }
   }
 }
 
 testing this :
 
 .[testing actions]
-  >[action declerations]
-  >[Annotation declerations]
+  >[action declarations]
+  >[Annotation declarations]
   const testActionArguments = ()=>{
     console.log(parseActionArguments("test-action1"))
     console.log(parseActionArguments("test-action2:this is just one test argument"))
@@ -297,8 +302,8 @@ testing this :
 
 Including it in the global declarations:
 
-.[+global declerations]
-  >[action declerations]
+.[+global declarations]
+  >[action declarations]
 
 Now we must also talk about processing various datatypes available : 
 
@@ -407,7 +412,7 @@ const dataType = {
 
 Including it in the global declarations:
 
-.[+global declerations]
+.[+global declarations]
   >[data type processing decleration]
 
 Processing data types : 
@@ -485,6 +490,38 @@ Resources can be used in many ways. the 2  common types of resources will be : i
 - if it's a pdf file , one can refer to individual pages of the doc
 - if it's an image, one can refer to specific parts of the image
 
+Blocks with special purpose 
+There are some blocks with special name that can be used to specify metadata realted to the document.
+All of these blocks have the  key-value data type.
+Data can only be appened to there blocks (i.e. you cannot create a block with the same name but you can append data to it using the plus sign in the decleration annotation)
+
+.[Special purpose blocks]
+const specialBlocks = [
+  {
+    name: "outputs",
+    type:"key-value",
+    note:"To store various output files that can be generated using this doc"
+  },
+  {
+    name: "metadata",
+    type:"key-value",
+    note:"some meta data related to the doc"
+  },
+  {
+    name: "graph-edge-names",
+    type:"key-value",
+    note:"to keep metadata realted to graph edges in the knowledge graph"
+  },
+  {
+    name: "graph-queries",
+    type:"key-value",
+    note:"to store knowledge graph queries "
+  }
+]
+
+.[+global declarations]
+  >[special purpose blocks] 
+
 Now we need to generate the document object. 
 The first step is actually generating the blocks by splitting the document. 
 we must also initialise:
@@ -545,6 +582,7 @@ What does that processing look like:
 .[Method for First pass]
 const firstPass = (blocks) => {
   >[initialize doc and graph]
+  >[include special blocks]
   blocks.map((block,index)=>{
     if(block){
         >[process decleration annotations]
@@ -562,6 +600,17 @@ const firstPass = (blocks) => {
   let g = getBlankDepGraph()
   let kg = getBlankKnowledgeGraph()
   let edgesToAdd = []
+
+.[include special blocks]
+specialBlocks.map(sblock  => {
+  d.blocks.push(sblock.name)
+  d.data[sblock.name] = {
+    rawText: [],
+    text:"",
+    annotations: { d:{ }, i:{valid: []}, at:{valid: [{action:"data",arguments:{"text": sblock.type }}]}}
+  }
+  g = graph.addVertex(g,{id:sblock.name})
+})
 
 .[process decleration annotations]
 const newBlock = annotations.declaration.extract(block)
