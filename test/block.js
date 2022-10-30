@@ -82,7 +82,12 @@ const parseActionArguments = (argumentText)=>{
 const actions = {
   'data': {
     'about':'To declare data type for a block',
-    'process':()=>{},
+    'process':(actionData,blockData)=>{
+      // newBlockContentFields, newKnowledgeGraphEdge
+      let selectedDataType = actionData.arguments.text
+      let processedData = dataType[selectedDataType](blockData.text)
+      return { newBlockDataFields : processedData  }
+    },
     'generateText':()=>{}
   },
   'graph' :{
@@ -92,7 +97,7 @@ const actions = {
  
   
 const parseDefaultData = (blockText)=>{
-    let data = {text: blockText , title: blockText , noLines: 0, linesWithoutTitle:[] }
+    let data = {title: blockText , noLines: 0, linesWithoutTitle:[] }
     let lines = blockText.split("\n")
     const noOfLines = lines.length
     data.noLines = noOfLines
@@ -123,9 +128,9 @@ const dataType = {
         keyValueData[parts[0].trim()] = parts[1].trim()
       }
     })
-    initialData.linesWithoutTitle=[]
     initialData.keyValueData = keyValueData
     initialData.type = "key-value"
+    delete initialData.linesWithoutTitle
     return initialData    
   },
   "csv":(blockText) => {
@@ -138,9 +143,9 @@ const dataType = {
         csvData.push(parts)
       }
     })
-    initialData.linesWithoutTitle=[]
     initialData.csvData = csvData
     initialData.type = "csv"
+    delete initialData.linesWithoutTitle
     return initialData
   },
   "list":(blockText)=>{
@@ -152,9 +157,9 @@ const dataType = {
         listData.push({text:l})
       }
     })
-    initialData.linesWithoutTitle=[]
     initialData.listData = listData
     initialData.type = "list"
+    delete initialData.linesWithoutTitle
     return initialData
   },
   "resource":(blockText)=>{},
@@ -168,14 +173,15 @@ const dataType = {
         resourceData[parsedObj.key] = parsedObj.value
       }
     })
-    initialData.linesWithoutTitle=[]
     initialData.resourceListData = resourceData
     initialData.type = "resource-list"
+    delete initialData.linesWithoutTitle
     return initialData
   },
   "default":(blockText)=>{
     let data = parseDefaultData(blockText)
     data.type = "default"
+    delete data.linesWithoutTitle
     return data
   }
 }
@@ -211,7 +217,6 @@ const hashBlockId = (text)=>{
   return { isAppend: isAppend, id: txt }
 }
   
-
   
 const firstPass = (blocks) => {
   
@@ -229,7 +234,7 @@ if(d.blocks.indexOf(newBlock.id)==-1){
   let data = {
     rawText: [{block,index}],
     text:processedText,
-    annotations: { d:{index, ...newBlock}, i:{}, at:{}}
+    annotations: { d:{index, ...newBlock}, i:{valid: []}, at:{valid: []}}
   }
   d.data[newBlock.id] = data
   g = graph.addVertex(g,{id:newBlock.id})
@@ -241,9 +246,6 @@ if(d.blocks.indexOf(newBlock.id)==-1){
 }
         
 const allAsmts = annotations.invocation.extract(block)
-if(!d.data[newBlock.id]['annotations']['i']['valid']){
-  d.data[newBlock.id]['annotations']['i']['valid'] = []
-}
 allAsmts.map(itm=>{
   if(itm.id != newBlock.id){
     d.data[newBlock.id]['annotations']['i']['valid'].push({index,...itm})
@@ -254,17 +256,14 @@ allAsmts.map(itm=>{
   
 let allActions = annotations.action.extract(block)
   
-let lookForDataType = allActions.find(itm=>{return itm.action == 'data' } )
-if(!lookForDataType){
-  allActions.push({ action:"data", arguments:{ text:"default",d:"0"}})
-}
-  
-if(!d.data[newBlock.id]['annotations']['at']['valid']){
-  d.data[newBlock.id]['annotations']['at']['valid'] = []
-}
 allActions.map(itm=>{
   d.data[newBlock.id]['annotations']['at']['valid'].push({index,...itm})
 })
+  
+let lookForDataType = d.data[newBlock.id]['annotations']['at']['valid'].find(itm=>{return itm.action == 'data' } )
+if(!lookForDataType){
+  d.data[newBlock.id]['annotations']['at']['valid'].push({ action:"data", arguments:{ text:"default",d:"0"}})
+}
     }
   })
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
@@ -273,15 +272,32 @@ allActions.map(itm=>{
   
 const processBlocksInOrder = (docObj, vertexOrder) => {
   vertexOrder.map(v=>{
-    let validAnn = docObj['data'][v.vertexId]['annotations']['i']['valid']
-    if(validAnn.length > 0){
-      let mainText = docObj['data'][v.vertexId]['text']
-      validAnn.map(annBlock=>{
-        let annText = docObj['data'][annBlock.blockId]['text']
-        mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
-      }) 
-      docObj['data'][v.vertexId]['text'] = mainText
+    
+let validAnn = docObj['data'][v.vertexId]['annotations']['i']['valid']
+if(validAnn.length > 0){
+  let mainText = docObj['data'][v.vertexId]['text']
+  validAnn.map(annBlock=>{
+    let annText = docObj['data'][annBlock.blockId]['text']
+    mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
+  }) 
+  docObj['data'][v.vertexId]['text'] = mainText
+}
+    
+let validAct = docObj['data'][v.vertexId]['annotations']['at']['valid']
+if(validAct.length > 0){
+  validAct.map(act=>{
+    //console.log(act)
+    if(actions[act.action]){
+      let actionEval = actions[act.action]['process'](act,docObj['data'][v.vertexId])
+      //console.log(actionEval)
+      if(actionEval.newBlockDataFields){
+        let newBlockData = { ... docObj['data'][v.vertexId], ... actionEval.newBlockDataFields  }
+        //console.log(newBlockData)
+        docObj['data'][v.vertexId] = newBlockData
+      }
     }
+  }) 
+}
   })
   return docObj
 } 
