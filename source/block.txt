@@ -27,7 +27,7 @@ And here's the test program file:
 
 .[Program for testing]
   >[Main]
-  module.exports = { docToBlocks, getBlankDocObj, getBlankDepGraph, hashBlockId, annotations, generateProcessingOrder, processBlocksInOrder, generateDocObject, generateOutputDoc }
+  module.exports = { docToBlocks, getBlankDocObj, getBlankDepGraph, hashBlockId, annotations, generateProcessingOrder, generateDocObject, generateOutputDoc }
 
 Moving on to the parts of the program :
 
@@ -87,6 +87,8 @@ const getBlankDepGraph = ()=>{
 .[method to generate blank knowledge graph]
 const getBlankKnowledgeGraph = ()=>{
   let newG = graph.createGraph({ title:"Doc knowledge graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
+  const defaultVertices = ['summary','todo']
+  defaultVertices.map(ver=>{ newG = graph.addVertex(newG,{ id: ver, data: {} }) })
   return {...newG}
 }
 
@@ -523,17 +525,20 @@ What does that processing look like:
 
 .[Generate document object]
   >[Method for First pass]
-  >[Method for Second pass] 
   >[Method to generate block processing order]
+  >[Method for Second pass] 
   const generateDocObject = (doc,options={})=>{
     try{
       const blocks = docToBlocks(doc,"\n\n")
       let obj = firstPass(blocks)
       let blockContent = obj.d
       let blockDependencyGraph = obj.g
+      let knowledgeGraph = obj.kg
       let order =  generateProcessingOrder(blockDependencyGraph)
-      blockContent = processBlocksInOrder(blockContent,order.vertexInOrder)
-      return {blockContent, blockDependencyGraph, ...order }
+      let finalValues = secondPass(blockContent,knowledgeGraph,order.vertexInOrder)
+      blockContent = finalValues.blockContent
+      knowledgeGraph = finalValues.knowledgeGraph
+      return {blockContent, blockDependencyGraph, knowledgeGraph, ...order }
     }catch(error){console.log(error)}
   } 
 
@@ -548,7 +553,7 @@ const firstPass = (blocks) => {
     }
   })
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
-  return {d,g}
+  return {d,g,kg}
 }
 
 .[initialize doc and graph]
@@ -604,13 +609,16 @@ if(!lookForDataType){
   d.data[newBlock.id]['annotations']['at']['valid'].push({ action:"data", arguments:{ text:"default",d:"0"}})
 }
 
+.[Method to generate block processing order]
+const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
+
 .[Method for Second pass]
-const processBlocksInOrder = (docObj, vertexOrder) => {
+const secondPass = (docObj, kGraph, vertexOrder) => {
   vertexOrder.map(v=>{
     >[process invocation annotations again]
     >[process action annotations again]
   })
-  return docObj
+  return {blockContent: docObj, knowledgeGraph: kGraph }
 }
 
 .[process invocation annotations again]
@@ -641,9 +649,6 @@ if(validAct.length > 0){
   }) 
 }
 
-.[Method to generate block processing order]
-const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
-
 Phew! the main part of the program is done! Now, given a document, we can generate a document Object for it which consists of blockContent, blockDependencyGraph, blockProcessingOrder and knowlegeGraph 
 Now we can focus on generating outputs from this document. By utilizing all the objects generated for this document we can generate all sorts of documents. For instance, we can save the content of a certain block as a file. This block can be a fully functional program.
 We can also generate interactive HTML documents. 
@@ -659,7 +664,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
     },
     "explorer": async ()=>{
       const Document = generateDocObject(doc,options) 
-      const allGraphs = [ Document.blockDependencyGraph, Document.dfsTree, Document.tsTree ]
+      const allGraphs = [ Document.blockDependencyGraph, Document.knowledgeGraph, Document.dfsTree, Document.tsTree ]
       const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
       const sanitizeArrows = (text)=>{
         let sText = text.replaceAll("<","&lt;").replaceAll(">","&gt;")

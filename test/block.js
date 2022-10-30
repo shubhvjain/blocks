@@ -202,6 +202,8 @@ const getBlankDepGraph = ()=>{
   
 const getBlankKnowledgeGraph = ()=>{
   let newG = graph.createGraph({ title:"Doc knowledge graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
+  const defaultVertices = ['summary','todo']
+  defaultVertices.map(ver=>{ newG = graph.addVertex(newG,{ id: ver, data: {} }) })
   return {...newG}
 }
   
@@ -267,10 +269,12 @@ if(!lookForDataType){
     }
   })
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
-  return {d,g}
+  return {d,g,kg}
 }
   
-const processBlocksInOrder = (docObj, vertexOrder) => {
+const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
+  
+const secondPass = (docObj, kGraph, vertexOrder) => {
   vertexOrder.map(v=>{
     
 let validAnn = docObj['data'][v.vertexId]['annotations']['i']['valid']
@@ -299,19 +303,20 @@ if(validAct.length > 0){
   }) 
 }
   })
-  return docObj
+  return {blockContent: docObj, knowledgeGraph: kGraph }
 } 
-  
-const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
   const generateDocObject = (doc,options={})=>{
     try{
       const blocks = docToBlocks(doc,"\n\n")
       let obj = firstPass(blocks)
       let blockContent = obj.d
       let blockDependencyGraph = obj.g
+      let knowledgeGraph = obj.kg
       let order =  generateProcessingOrder(blockDependencyGraph)
-      blockContent = processBlocksInOrder(blockContent,order.vertexInOrder)
-      return {blockContent, blockDependencyGraph, ...order }
+      let finalValues = secondPass(blockContent,knowledgeGraph,order.vertexInOrder)
+      blockContent = finalValues.blockContent
+      knowledgeGraph = finalValues.knowledgeGraph
+      return {blockContent, blockDependencyGraph, knowledgeGraph, ...order }
     }catch(error){console.log(error)}
   } 
   
@@ -325,7 +330,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
     },
     "explorer": async ()=>{
       const Document = generateDocObject(doc,options) 
-      const allGraphs = [ Document.blockDependencyGraph, Document.dfsTree, Document.tsTree ]
+      const allGraphs = [ Document.blockDependencyGraph, Document.knowledgeGraph,Document.dfsTree, Document.tsTree ]
       const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
       const sanitizeArrows = (text)=>{
         let sText = text.replaceAll("<","&lt;").replaceAll(">","&gt;")
@@ -376,4 +381,4 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
   const docContent = await  docTypes[options.type]()
   return docContent
 }
-  module.exports = { docToBlocks, getBlankDocObj, getBlankDepGraph, hashBlockId, annotations, generateProcessingOrder, processBlocksInOrder, generateDocObject, generateOutputDoc }
+  module.exports = { docToBlocks, getBlankDocObj, getBlankDepGraph, hashBlockId, annotations, generateProcessingOrder, generateDocObject, generateOutputDoc }
