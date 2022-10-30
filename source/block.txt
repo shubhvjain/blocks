@@ -1,8 +1,8 @@
-This program takes in annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 4 main objects (along with other useful objects about the doc) : 
+This program takes in an annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 4 main objects (along with other useful objects about the doc) : 
 - "blockContent" object which  contains the final values of all  the blocks 
 - "blockDependencyGraph :  a directed acyclic graph which shows the relationships among the blocks 
-- "blockProcessingOrder" :  topological order in which the blocks must be processed to ensure that for all blocks, their dependencies are processed before it
-- "knowledgeGraph" : graph that stores user defined relations between blocks, which are defined in the document using action annotations 
+- "blockProcessingOrder" : the order in which the blocks must be processed to ensure that, for all blocks, their dependencies are processed before it
+- "knowledgeGraph" : a graph that stores user defined relations between blocks, which are defined in the document using action annotations 
 
 Here is the main program that does that : 
 
@@ -13,9 +13,9 @@ Here is the main program that does that :
   >[Generate document object]
   >[Generate output document]
 
-What will this "Main" program generate ?
-A Javascript module that returns 2 main functionalities : "generateDocObject" and "generateOutputDoc".
-However, I still need to test all other methods. So I will create 2 different files for the program : one is the actual program file that exports just the 2 main functions. Another file where all the functionalities are exported to thoroughly test all parts of the program.
+What will this "Main" program generate?
+A Javascript module that returns 2 main functionalities: "generateDocObject" and "generateOutputDoc".
+However, I still need to test all other methods. So I will create 2 different files for the program: one is the actual program file that exports just the 2 main functions. Another file where all the functionalities are exported to thoroughly test all parts of the program.
 
 Here's the main program file :
 
@@ -39,7 +39,7 @@ const graph = require('./graph')
 We require several utility functions.
 
 .[Doc conventions]
-- whenever i declare a block for a standalone method, i use the following naming conventions for that block : Method to <function description> . (e.g. Method to split doc)
+- whenever I declare a block for a standalone method, I use the following naming conventions for that block: "Method to <function description>" . (e.g. Method to split doc)
 
 .[Utility functions]
   >[Method to split doc into blocks]
@@ -52,11 +52,11 @@ We require several utility functions.
 
 Blocks are the smallest units of processing. So we must extract all blocks from a document. 
 This method takes in a doc and a splitter and returns an array of blocks by splitting the doc string using the provided splitter.
-By convention, blocks are seperated by a new line. 
-So let's create a new global decleration for that
+By convention, blocks are separated by a new line. 
+So let's create a new global declaration for that
 
 .[+Doc conventions]
-- global decleration/variables names are in camel case and begins with upper case
+- global declaration/variables names are in camel case and begin with upper case
 
 .[Global declerations]
   const BlockSplitCharacter = "\n"
@@ -115,11 +115,11 @@ The above can be understood more easily with some examples:
 
 Now, the most important part of the programs. The annotation declarations. 
 
-What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations makes the document more structured and provides a way to extract "knowledge" from the document which can be further processed.  
+What are annotations ? Specifying annotations in the document is a way to include metadata related to the document content. Annotations make the document more structured and provide a way to extract "knowledge" from the document which can be further processed.  
 
 There are 3 types of annotations :
 - declaration : this will be used to declare blocks or give names to blocks
-- invocation : this will be used to include the content of one blocks in another block (or to declare a block dependency)
+- invocation : this will be used to include the content of one block in another block (or to declare a block dependency)
 - action : to declare metadata and actions. these annotations are processed within a "context" which is determined by the locations of where it is used
 
 Each annotation type has a different delimiter within which they are "defined" in a document
@@ -158,9 +158,9 @@ declaration: {
     }
 }
 
-Declearations are enclosed within : ".[]".
+Declarations are enclosed within : ".[]".
 It must be specified at the beginning of the block.
-Valid character : all alphanumeric charaters and one symbol : dash ("-"). nothing else. see the method to hash block name function to see how a name is assigned to a block. 
+Valid character : all alphanumeric characters and one symbol : dash ("-"). nothing else. see the method to hash block name function to see how a name is assigned to a block. 
 
 .[invocation annotation]
 invocation: {
@@ -199,17 +199,17 @@ action: {
   }
 }
 
-Action annotations allows one to do a lot of things. 
+Action annotations allow one to do a lot of things. 
 
-How to specify them : withing the "/[]" delimiter. one action per bracket. to define multiple actions, use multiple brackets
+How to specify them : within the "/[]" delimiter. one action per bracket. to define multiple actions, use multiple brackets
 Each action has a format : "action-name : arguments". E.g. /[todo: do nothing.just a demo]
 
 here is a list of things that can be done using action annotations :
 - defining documents related actions. when working actively on a document , you would want to add actions that you can take later. for instance editing a block later. 
 - relating the current block to some other block in the knowledge graph 
-- specify data type of a block
+- specify the data type of a block
 - load another file in the document 
-- query and display part of knowledge graph
+- query and display part of the knowledge graph
 - specify block format (e.g heading, section title etc...)
 
 A note on how to specify action annotations:
@@ -221,24 +221,23 @@ Here are a few ways in which we can call a function in js:
 
 .[about action args] The question is how to specify actions arguments ?
 The format of specifying the action itself is fixed i.e. "action-name : arguments"
-In most cases there will be a single argument. like : "todo:this" where "this" will the value of the argument named "text". this is the default functioning. if the action has a single agrument then it will be named "text" by default.
+In most cases, there will be a single argument. like : "todo:this" where "this" will the value of the argument named "text". this is the default functioning. if the action has a single argument then it will be named "text" by default.
 But some actions might require multiple arguments. for instance  when specifying the data type of a block as a resource, we also need to specify the location of the resource. 
 This makes life simple: if an action has a single argument, no argument name required
-In case of actions with multiple arguments, the first argument is always named "text". all other arguments must be named. 
+In the case of actions with multiple arguments, the first argument is always named "text". all other arguments must be named. 
 What will be the format of naming them ? : "action-name: text, arg-name= arg-value , arg-name2= arg-value2  "
-- arguments are sperated by comma (which means argument content cannot contain comma \[todo: fix this is later version] )
+- arguments are separated by comma (which means argument content cannot contain comma \[todo: fix this is later version] )
 As an example : /[data:resource, location= /path/to/file.pdf , down= true ]
 
 Every action will have some common arguments :
-text - this is the defult first arguments
-d - this is a flag (either 0 or 1, 0 by default) : it's value indicate whether to display the content of this action annotation in the final block content or hide it. what value is shown depends on the action. for instace in a todo action if d=1, then "(Todo: text-content )" is included in the final block value where this todo action was specified. 
+text - this is the default first arguments
+d - this is a flag (either 0 or 1, 0 by default) : its value indicates whether to display the content of this action annotation in the final block content or hide it. what value is shown depends on the action. for instance in a todo action if d=1, then "(Todo: text-content )" is included in the final block value where this todo action was specified. 
 
-What does it actaully mean to process an action ?
-or what are the possible things actions can do?
-they can :
+What does it actually mean to process an action ?
+or What are the possible things  an action can do?
+They can :
 - modifiy the content of the block in which they are defined 
-- add a new edge in the knowldege graph 
-
+- add a new edge to the knowledge graph 
 
 Here's how to process various actions 
 
@@ -279,7 +278,7 @@ testing this :
   const testActionArguments = ()=>{
     console.log(parseActionArguments("test-action1"))
     console.log(parseActionArguments("test-action2:this is just one test argument"))
-    console.log(parseActionArguments("test-action3:one, two = tr , three =  this is good  , four= jha ha haa "))
+    console.log(parseActionArguments("test-action3:one, two = tr , three =  this is good  , four= haha "))
     console.log(parseActionArguments(""))
   }
   const testActionExtractions = ()=>{
@@ -290,7 +289,7 @@ testing this :
   testActionExtractions()
 
 
-including it in the global declerations:
+including it in the global declarations:
 
 .[+global declerations]
   >[action declerations]
@@ -340,7 +339,7 @@ const dataType = {
     let listData = ['index item added by default']
     initialData.linesWithoutTitle.map(line=>{
       let l = line.replace("-","").trim()
-      listData.push(l)
+      listData.push({text:l})
     })
     initialData.linesWithoutTitle=[]
     initialData.listData = listData
@@ -348,6 +347,7 @@ const dataType = {
     return initialData
   },
   "resource":(blockText)=>{},
+  "resource-list":(blockText)=>{},
   "default":(blockText)=>{
     let data = parseDefaultData(blockText)
     data.type = "default"
@@ -359,14 +359,14 @@ const dataType = {
   >[data type processing decleration]
   let data = [
     { type:"default", value:`>[default text block 1]`},
-    { type:"default", value:`>[default mutliline block]`},
+    { type:"default", value:`>[default multiline block]`},
     {type:'csv',value:`>[table example]` },
     {type:'key-value',value:`>[key value store example]` },
     {type:'list',value:`>[list example]` },
   ]
   data.map(dt=>{console.log(dataType[dt.type](dt.value))})
 
-Including it in the global declerations:
+Including it in the global declarations:
 
 .[+global declerations]
   >[data type processing decleration]
@@ -378,9 +378,9 @@ Default:
 
 .[default text block 1] this is a block content. plain , simple text
 
-.[default mutliline block] this is the title of the block
+.[default multiline block] this is the title of the block
 this block is multiline.
-the first line in a multiline block is always it's title. this is particularly useful when creating knowledge graphs.
+the first line in a multiline block is always its title. this is particularly useful when creating knowledge graphs.
 
 Key value store :
 
@@ -394,7 +394,7 @@ List :
 - item 1 
 - item 2
 - item 3
-- at this point i will just have the single level of list 
+- at this point, i will just have the single level of list 
 
 Table:
 
@@ -404,55 +404,78 @@ Table:
 - 3,4,5
 - 6,7,8
 
-
 Resource: a block can also be an external resource 
-.[external resource] /[data:resource , loc = path/to/file]
 
-Its usage: now we can access specific parts of a block in invocation annotations. For examples:
+.[external resource] /[data:resource , path = path/to/file]
+
+.[resource list 1] /[data:resource-list]
+- keyForRes1 : path = path , title = Something , note = Something
+
+.[+resource list 1]
+- keyForRes2 : remote-path = http something , title = something
+
+
+
+More on resource data type :
+- the resource path can be offline or online or both (in case of both, offline is preferred)
+- technical note: resources are fetched on demand i.e. only when required in any output document generation part and not while generating the Document object.  
+- offline path : 
+  - eg. : "data:resource path=blah/blah/blah.pdf"
+  - there are no absolute or relative paths. 
+  - the path must refer to a file in the same folder (or a sub folder)
+- online path :
+   - e.g. "data:resource remote-path=https://website.com/some/file.png"
+   - it need not be a file. it can also be a web page (in that case a copy of the webpage will be fetched) 
+
+
+
+What's the point of defining a data type for a block ?
+Now we can access specific parts of a block in invocation annotations. For examples:
 - here is the value of the key named key1 in the block name "key value pair example" : >[key value pair example.key1]
 - here is value of 1st item in the list "list example" : >[list example.1]
 - here is the value from the 1st row and col1 from "table example" : >[table example.1.col1]
 
-resources can be used in many ways. the 3 most common types of resources will be : images, PDF documents, text files  
+Resources can be used in many ways. the 2  common types of resources will be : images, PDF documents  
 - if it's a pdf file , one can refer to individual pages of the doc
 - if it's an image, one can refer to specific parts of the image
 
-Now we need to  generate of the document object. 
-The first step is to actually generating the blocks by  splitting the document. 
+Now we need to generate the document object. 
+The first step is actually generating the blocks by splitting the document. 
 we must also initialise:
 - the document object. this consists of :
   - an array of "blocks" which holds the blocks in the order in which they were declared in the document
-  - a blank object "data". data will contain all processed block data. the key will be  unique block in the document and it value will be all the data related to that block. this may include the raw text, processed text, annotations used in the text etc...
-- the block dependency graph. blocks once declared (via deceleration annotation) can be used in other blocks. this means some blocks will depend on other blocks for their full content. this means we have to make sure that there are no cyclic dependencies among the blocks and a block is processed after all it's dependent blocks are processed. this is ensured if the block dependency graph forms a directed acyclic graph. the block dependency graph captures the dependencies of one block over other. 
+  - a blank object "data". data will contain all processed block data. the key will be  unique block in the document and its value will be all the data related to that block. this may include the raw text, processed text, annotations used in the text etc...
+- the block dependency graph. blocks once declared (via deceleration annotation) can be used in other blocks. this means some blocks will depend on other blocks for their full content. This means we have to make sure that there are no cyclic dependencies among the blocks and that a block is processed after all its dependent blocks are processed. This is ensured if the block dependency graph forms a directed acyclic graph. The block dependency graph captures the dependencies of one block over other. 
 
-consider the following example :
+Consider the following example :
 block1 : some text
 block2 : some text + block 1
-here block2 is dependent on block1. in the dependency graph there will be a directed edge from block2 to block1 because block 2 depends on block1 for its content. thus block 1 must be processed first. 
 
-now consider 
+Here block2 is dependent on block1. in the dependency graph there will be a directed edge from block2 to block1 because block 2 depends on block1 for its content. thus block 1 must be processed first. 
+
+Now consider 
 block1 : some text + block 2
 block 2: some text + block 3
 block 3 : some text + block 1
-the above blocks cannot be processed as there is a cyclic dependency between them. 
 
-once we have an array of blocks, we need to iterate through all the blocks to do a few things :
-- one : process decleration annotations
+The above blocks cannot be processed as there is a cyclic dependency between them. 
+
+Once we have an array of blocks, we need to iterate through all the blocks to do a few things :
+- one : process declaration annotations
   - determine the name of each blocks. 
   - some blocks might be named using the declaration annotation. if not, they have to be assigned a unique block name.
   - if block is being processed for the first time, we need to initialize the block in the blockContent object as well. 
   - if the block is being appended, some additional processing needs to be done 
 
-- two : process block data. by default blocks are simple text. adding structure to document also means to be able to specify data in difftent formats with ease. the 2 most commonly used data structures are : dictionary and tables
+- two : process block data. By default, blocks are simple text. Adding structure to a document also means being able to specify data in different formats with ease. the 2 most commonly used data structures are : dictionaries and tables
 
-- three : process invocation annotation and build the dependency graph along the way. the final processing of blocks will take place only after the complete depnencey graph is checked for cycle. this means we would need another iteration over the blocks to finally process them. thus there will be 2 passes over the block: the first pass (which is currenlty being described here) and the second pass that take places only after dependenies are checked. 
+- three : process invocation annotation and build the dependency graph along the way. The final processing of blocks will take place only after the complete dependency graph is checked for cycle. This means we would need another iteration over the blocks to finally process them. Thus there will be 2 passes over the block: the first pass (which is currently being described here) and the second pass that takes place only after dependencies are checked. 
 
 the second pass through the blocks :
 in the second iteration, we assume that we have an order in which all the blocks of the document must be processed.
-What does that processing looks like:
+What does that processing look like:
 - Replacing all invocation annotations with actual block text. 
-- Replacing all action annotations with appropriate values (some needs to be removed, some needs to be replaced with a string) This includes processing the data type of the block. 
-
+- Replacing all action annotations with appropriate values (some need to be removed, some need to be replaced with a string) This includes processing the data type of the block. 
 
 
 .[Generate document object]
@@ -478,6 +501,7 @@ const firstPass = (blocks) => {
     if(block){
         >[process decleration annotations in the block]
         >[process invocation annotations in the block]
+        >[process action annotations in the block]
     }
   })
   edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
@@ -498,7 +522,7 @@ if(d.blocks.indexOf(newBlock.id)==-1){
   let data = {
     rawText: [{block,index}],
     text:processedText,
-    annotations: { d:{index, ...newBlock}, a:{}}
+    annotations: { d:{index, ...newBlock}, i:{}, at:{}}
   }
   d.data[newBlock.id] = data
   g = graph.addVertex(g,{id:newBlock.id})
@@ -511,20 +535,29 @@ if(d.blocks.indexOf(newBlock.id)==-1){
 
 .[process invocation annotations in the block]
 const allAsmts = annotations.invocation.extract(block)
-if(!d.data[newBlock.id]['annotations']['a']['valid']){
-  d.data[newBlock.id]['annotations']['a']['valid'] = []
+if(!d.data[newBlock.id]['annotations']['i']['valid']){
+  d.data[newBlock.id]['annotations']['i']['valid'] = []
 }
 allAsmts.map(itm=>{
   if(itm.id != newBlock.id){
-    d.data[newBlock.id]['annotations']['a']['valid'].push({index,...itm})
+    d.data[newBlock.id]['annotations']['i']['valid'].push({index,...itm})
     edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
   }
+})
+
+.[process action annotations in the block]
+const allActions = annotations.action.extract(block)
+if(!d.data[newBlock.id]['annotations']['at']['valid']){
+  d.data[newBlock.id]['annotations']['at']['valid'] = []
+}
+allActions.map(itm=>{
+  d.data[newBlock.id]['annotations']['at']['valid'].push({index,...itm})
 })
 
 .[Method for Second pass]
 const processBlocksInOrder = (docObj, vertexOrder) => {
   vertexOrder.map(v=>{
-    let validAnn = docObj['data'][v.vertexId]['annotations']['a']['valid']
+    let validAnn = docObj['data'][v.vertexId]['annotations']['i']['valid']
     if(validAnn.length > 0){
       let mainText = docObj['data'][v.vertexId]['text']
       validAnn.map(annBlock=>{
@@ -543,7 +576,7 @@ const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(block
 
 
 Phew! the main part of the program is done! Now, given a document, we can generate a document Object for it which consists of blockContent, blockDependencyGraph, blockProcessingOrder and knowlegeGraph 
-Now we can foucs on generating outputs from this doucment. By utilizing all the objects generated for this document we can generate all sorts of documents. for instance we can save content of a certian block as a file. this block can be a fully functional program.
+Now we can focus on generating outputs from this document. By utilizing all the objects generated for this document we can generate all sorts of documents. For instance, we can save the content of a certain block as a file. This block can be a fully functional program.
 We can also generate interactive HTML documents. 
 
 .[Generate output document]
@@ -586,7 +619,10 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
                     </ul>
                     <div class="tab-content" id="pills-tabContent">
                       <div class="tab-pane fade show active" id="pills-source" role="tabpanel" aria-labelledby="pills-source-tab" tabindex="0">
-                        <pre>${sanitizeArrows(doc)}</pre>
+                        <div class="row">
+                          <div class="col-lg-6"> <h4> Source </h4> <pre>${sanitizeArrows(doc)}</pre></div>
+                          <div class="col-lg-6"> <h4> Document object </h4> <pre>${sanitizeArrows(JSON.stringify(Document.blockContent,null,1))}</pre></div>
+                        </div>
                       </div>
                       <div class="tab-pane fade" id="pills-graph" role="tabpanel" aria-labelledby="pills-graph-tab" tabindex="0">
                         ${graphHTML.body}
