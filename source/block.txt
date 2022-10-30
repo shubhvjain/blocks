@@ -550,9 +550,10 @@ const firstPass = (blocks) => {
         >[process decleration annotations]
         >[process invocation annotations]
         >[process action annotations]
+        >[create a copy of final first pass text]
     }
   })
-  edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
+  >[add edges to dep graph]
   return {d,g,kg}
 }
 
@@ -608,6 +609,14 @@ let lookForDataType = d.data[newBlock.id]['annotations']['at']['valid'].find(itm
 if(!lookForDataType){
   d.data[newBlock.id]['annotations']['at']['valid'].push({ action:"data", arguments:{ text:"default",d:"0"}})
 }
+
+.[create a copy of final first pass text]
+d.data[newBlock.id]['finalText'] =  d.data[newBlock.id]['text']
+
+(this copy of the text with annotations could be useful is generating all sorts of documents!)
+
+.[add edges to dep graph]
+edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
 
 .[Method to generate block processing order]
 const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }

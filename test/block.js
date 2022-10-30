@@ -266,9 +266,12 @@ let lookForDataType = d.data[newBlock.id]['annotations']['at']['valid'].find(itm
 if(!lookForDataType){
   d.data[newBlock.id]['annotations']['at']['valid'].push({ action:"data", arguments:{ text:"default",d:"0"}})
 }
+        
+d.data[newBlock.id]['finalText'] =  d.data[newBlock.id]['text']
     }
   })
-  edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
+  
+edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
   return {d,g,kg}
 }
   
@@ -330,7 +333,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
     },
     "explorer": async ()=>{
       const Document = generateDocObject(doc,options) 
-      const allGraphs = [ Document.blockDependencyGraph, Document.knowledgeGraph,Document.dfsTree, Document.tsTree ]
+      const allGraphs = [ Document.blockDependencyGraph, Document.knowledgeGraph, Document.dfsTree, Document.tsTree ]
       const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
       const sanitizeArrows = (text)=>{
         let sText = text.replaceAll("<","&lt;").replaceAll(">","&gt;")
