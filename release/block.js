@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.5.0 . 
+the Block program. Version 0.5.1 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -259,7 +259,7 @@ const getBlankDepGraph = ()=>{
   
 const getBlankKnowledgeGraph = ()=>{
   let newG = graph.createGraph({ title:"Doc knowledge graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
-  const defaultVertices = ['summary','todo']
+  const defaultVertices = []
   defaultVertices.map(ver=>{ newG = graph.addVertex(newG,{ id: ver, data: {} }) })
   return {...newG}
 }
