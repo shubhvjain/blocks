@@ -17,23 +17,25 @@ const saveFile = async (filePath, fileContent) => {
 const main = async ()=>{
   const progs = {
    'build':async ()=>{
-      const inputPath = process.argv[3]
-      if(!inputPath){throw new Error("Provide input file path")}
+      const inputPath = process.argv[2]
+      if(!inputPath){throw new Error("Provide input file path : 1st arg")}
 
-      const outputPath = process.argv[4]
-      if(!outputPath){throw new Error("Provide output path file")}
+      const outputPath = process.argv[3]
+      if(!outputPath){throw new Error("Provide output path file: 2nd arg")}
+       
+       const cmdType = process.argv[4]
+       if(!cmdType){throw new Error("Provide command name : 3rd arg")}
 
       const entryBlock  = process.argv[5]
-      if(!entryBlock){throw new Error("Provide entry block name")}
+      if(!entryBlock){throw new Error("Provide entry block name: 4th arg")}
 
       const doc = await getFile(inputPath)
-      const processedDoc  = await block.generateOutputDoc(doc,{type:"file-with-entry", main:entryBlock})
+      const processedDoc  = await block.generateOutputDoc(doc,{type: cmdType , main:entryBlock})
       await saveFile(outputPath,processedDoc)
       console.log("Done!")
    }
   }
-  const cmdName = process.argv[2]
-  await  progs[cmdName]()
+  await  progs['build']()
  }
  
  
