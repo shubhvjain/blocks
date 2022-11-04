@@ -13,7 +13,7 @@ This program takes in an annotated document (a collection of blocks) , processes
 - add test files and look into automated testing 
 - look into knowledge graph queries
 - add more error handing 
-- simplify the way to add edges in knowledge graph, include a way to used the predefined edge labels (so that the dirction, label is consistent)
+- simplify the way to add edges in knowledge graph, include a way to used the predefined edge labels (so that the directions, label are  consistent throughout the graph)
 - individual processing of action annotation after successful processing (currently they are just removed from the text)
 - implment resource and resource-list data type
 
@@ -99,7 +99,7 @@ const getBlankDepGraph = ()=>{
 .[method to generate blank knowledge graph]
 const getBlankKnowledgeGraph = ()=>{
   let newG = graph.createGraph({ title:"Doc knowledge graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
-  const defaultVertices = ['summary','todo']
+  const defaultVertices = []
   defaultVertices.map(ver=>{ newG = graph.addVertex(newG,{ id: ver, data: {} }) })
   return {...newG}
 }
