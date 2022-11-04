@@ -10,15 +10,20 @@
 		"annotations":{
 			"patterns": [
 				{"include":"#declerationAnn"},
-				{"include":"#assignmentAnn"}
+				{"include":"#invocationAnn"},
+				{"include":"#actionAnn"}
 			]
 		},
 		"declerationAnn": {
       "match": "^(\\.\\[([\\+]?)([\\w\\s\\-]+?)])",
       "name": "keyword.letter"
     },
-		"assignmentAnn": {
+		"invocationAnn": {
       "match": "\\>\\[([\\w\\s\\-]+?)\\]",
+      "name": "keyword.letter"
+    },
+		"actionAnn": {
+      "match": "\\/\\[([\\s\\w\\:\\,\\=\\%\\.\\_\\-\\/\\>\\<]+?)\\]",
       "name": "keyword.letter"
     }
 	},
