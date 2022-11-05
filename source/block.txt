@@ -9,7 +9,7 @@ This program takes in an annotated document (a collection of blocks) , processes
 - version: 0.2.0
 
 .[Todo for next version] /[data:list]
-- indexing and accessing sub elements of special data type in invocation annotation
+- indexing and accessing sub elements of special data type in invocation annotation and action annotations
 - add test files and look into automated testing 
 - look into knowledge graph queries
 - add more error handing 
@@ -263,10 +263,12 @@ A note on creating new action type methods:
 .[action declarations]
 const parseActionArguments = (argumentText)=>{
   let result = { action:"", arguments:{ text:"",d:"0"}}
-  const parts = argumentText.split(":")
-  result.action = parts[0].trim()
-  if(parts.length > 1){
-    let argParts = parts[1].split(",")
+  let parts = argumentText.split(":")
+  let obj = { key: parts[0].trim(), value : '' }
+  parts.shift()
+  obj.value = parts.join(":")
+  result.action =  obj.key 
+    let argParts = obj.value.split(",")
     if(argParts.length>0){
       result.arguments['text'] = argParts[0].trim()
       argParts.shift()
@@ -275,7 +277,6 @@ const parseActionArguments = (argumentText)=>{
         result.arguments[ar[0].trim()] = ar[1].trim()
       })
     }
-  }
   return result
 }
 const actions = {
@@ -364,13 +365,17 @@ const parseDefaultData = (blockText)=>{
 const stringToObject = (text)=>{
   // string is of the form "title: one = two , three = four, five = six"
   let parts1 =  text.split(':')
+  let obj = { key: parts1[0].trim() , value: {}  }
+  parts1.shift()
+  let agrVal = parts1.join(":")
   let data = {}
-  let fields = parts1[1].split(",")
+  let fields = agrVal.split(",")
   fields.map(field=>{
     let v = field.split("=")
     data[ v[0].trim() ] = v[1].trim()
   })
-  return { key: parts1[0].trim() , value : data  }
+  obj.value = data
+  return obj
 }
 const dataType = {
   "key-value":(blockText)=>{
