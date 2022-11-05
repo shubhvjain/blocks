@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.5.1 . 
+the Block program. Version 0.5.2 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -77,10 +77,12 @@ action: {
   
 const parseActionArguments = (argumentText)=>{
   let result = { action:"", arguments:{ text:"",d:"0"}}
-  const parts = argumentText.split(":")
-  result.action = parts[0].trim()
-  if(parts.length > 1){
-    let argParts = parts[1].split(",")
+  let parts = argumentText.split(":")
+  let obj = { key: parts[0].trim(), value : '' }
+  parts.shift()
+  obj.value = parts.join(":")
+  result.action =  obj.key 
+    let argParts = obj.value.split(",")
     if(argParts.length>0){
       result.arguments['text'] = argParts[0].trim()
       argParts.shift()
@@ -89,7 +91,6 @@ const parseActionArguments = (argumentText)=>{
         result.arguments[ar[0].trim()] = ar[1].trim()
       })
     }
-  }
   return result
 }
 const actions = {
@@ -138,13 +139,17 @@ const parseDefaultData = (blockText)=>{
 const stringToObject = (text)=>{
   // string is of the form "title: one = two , three = four, five = six"
   let parts1 =  text.split(':')
+  let obj = { key: parts1[0].trim() , value: {}  }
+  parts1.shift()
+  let agrVal = parts1.join(":")
   let data = {}
-  let fields = parts1[1].split(",")
+  let fields = agrVal.split(",")
   fields.map(field=>{
     let v = field.split("=")
     data[ v[0].trim() ] = v[1].trim()
   })
-  return { key: parts1[0].trim() , value : data  }
+  obj.value = data
+  return obj
 }
 const dataType = {
   "key-value":(blockText)=>{
