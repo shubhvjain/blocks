@@ -30,5 +30,4 @@ run this command from the base directory of the project : `node ./script/release
 Run from the root of the project
 
 - `node test/develop.js cmd` : to run testing commands while working on the block program. like generating a new copy of block.js for testing using the lastest released version of the program. use '0' as 'cmd' for the list of all commands
-- `cp plugins/vscode-syntax-highlight/syntaxes/block.tmLanguage.json ~/.vscode/extensions/vscode-syntax-hilighter/syntaxes ` : to update the syntax file for vscode highlight extension on mac. Assuming the folder is already copied once
 - `node scripts/release.js versionType` : to release a new version of the program. specify version type (`major`, `minor` or `patch`)
