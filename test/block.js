@@ -180,8 +180,9 @@ const dataType = {
       let initialData = parseDefaultData(blockText);
       let keyValueData = {};
       initialData.linesWithoutTitle.map((line) => {
-        let l = line.replace("-", "").trim();
-        if (l.trim().length > 0) {
+        let l = line.trim()  
+        if (l.trim().length > 0  && l[0]=='-') {
+          l = l.replace("-","")
           const parsedString = stringToObject(l);
           keyValueData[parsedString.key] = parsedString.value;
         }
@@ -210,8 +211,8 @@ const dataType = {
       let initialData = parseDefaultData(blockText);
       let csvData = [];
       initialData.linesWithoutTitle.map((line) => {
-        let l = line.replace("-", "").trim();
-        if (l.trim().length > 0) {
+        let l = line.trim()  
+        if (l.trim().length > 0  && l[0]=='-') {
           const parts = l.split(",");
           csvData.push(parts);
         }
@@ -229,8 +230,9 @@ const dataType = {
       let initialData = parseDefaultData(blockText);
       let listData = ["index item added by default"];
       initialData.linesWithoutTitle.map((line) => {
-        let l = line.replace("-", "").trim();
-        if (l.trim().length > 0) {
+        let l = line.trim()  
+        if (l.trim().length > 0  && l[0]=='-') {
+          l = l.replace("-","")
           listData.push({ text: l });
         }
       });
