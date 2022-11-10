@@ -16,7 +16,7 @@ declaration: {
       let processedSource = rawSource.replaceAll(".[","")
       processedSource = processedSource.replaceAll("]","")
       const blockName = hashBlockId(processedSource)
-      return { rawSource, ...blockName}
+      return { rawSource, isAppend: blockName.isAppend, id: blockName.id }
     },
     generateText: (text)=>{
       const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
@@ -27,14 +27,15 @@ declaration: {
 invocation: {
     extract: (text) =>{
       const txt = text.trim()
-      const theRegex = /\>\[([\w\s\-]+?)\]/gm
+      const theRegex = /\>\[([\w\s\-]+?)([\.]*)([\w\s\-]*)([\.]*)([\w\s\-]*)\]/gm
       const parts = txt.match(theRegex)
       let asmts = []
       if(parts){
         parts.map(part=>{
           let t = part.replaceAll(">[","")
           t = t.replaceAll("]","")
-          asmts.push({ rawSource: part, blockId: hashBlockId(t)['id']})
+          let processBlockName = hashBlockId(t)
+          asmts.push({ rawSource: part, blockId: processBlockName['id'], subBlockId : processBlockName['subId'], subSubBlockId: processBlockName['subSubId'] })
         })
       }
       return asmts
@@ -60,12 +61,15 @@ action: {
 }
 }
   
+  
 const parseActionArguments = (argumentText)=>{
   let result = { action:"", arguments:{ text:"",d:"0"}}
-  const parts = argumentText.split(":")
-  result.action = parts[0].trim()
-  if(parts.length > 1){
-    let argParts = parts[1].split(",")
+  let parts = argumentText.split(":")
+  let obj = { key: parts[0].trim(), value : '' }
+  parts.shift()
+  obj.value = parts.join(":")
+  result.action =  obj.key 
+    let argParts = obj.value.split(",")
     if(argParts.length>0){
       result.arguments['text'] = argParts[0].trim()
       argParts.shift()
@@ -74,16 +78,15 @@ const parseActionArguments = (argumentText)=>{
         result.arguments[ar[0].trim()] = ar[1].trim()
       })
     }
-  }
   return result
 }
-const actions = {
+  const actions = {
   'data': {
     'about':'To declare data type for a block',
     'process':(actionData,blockData)=>{
       let selectedDataType = actionData.arguments.text
-      let processedData = dataType[selectedDataType](blockData.text)
-      return { newBlockDataFields : processedData  }
+      let processedData = dataType[selectedDataType]['process'](blockData.id, blockData.text)
+      return { ... processedData  }
     },
     'generateText':()=>{}
   },
@@ -110,6 +113,7 @@ const actions = {
   }
 }
   
+  
 const parseDefaultData = (blockText)=>{
     let data = {title: blockText , noLines: 0, linesWithoutTitle:[] }
     let lines = blockText.split("\n")
@@ -120,89 +124,128 @@ const parseDefaultData = (blockText)=>{
     data.linesWithoutTitle = lines
     return data
 }
+  
 const stringToObject = (text)=>{
-  // string is of the form "title: one = two , three = four, five = six"
+  // string is of the form "title: text,  one = two , three = four, five = six"
   let parts1 =  text.split(':')
-  let data = {}
-  let fields = parts1[1].split(",")
-  fields.map(field=>{
+  let obj = { key: parts1[0].trim() , value: {}  }
+  parts1.shift()
+  let remaingString = parts1.join(":")
+  let data = { text : remaingString  }
+  let fields = remaingString.split(",")
+  fields.map((field,index)=>{
     let v = field.split("=")
-    data[ v[0].trim() ] = v[1].trim()
+    if(v.length == 2){data[v[0].trim()] =  v[1].trim() }
+    else if(index == 0){ data['text'] = field}
   })
-  return { key: parts1[0].trim() , value : data  }
+  obj.value = data
+  return obj
 }
 const dataType = {
-  "key-value":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
-    let keyValueData = {}
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        const parts = l.split(":")
-        keyValueData[parts[0].trim()] = parts[1].trim()
+  
+"key-value": {
+    process: (blockId, blockText) => {
+      let initialData = parseDefaultData(blockText);
+      let keyValueData = {};
+      initialData.linesWithoutTitle.map((line) => {
+        let l = line.replace("-", "").trim();
+        if (l.trim().length > 0) {
+          const parsedString = stringToObject(l);
+          keyValueData[parsedString.key] = parsedString.value;
+        }
+      });
+      initialData.keyValueData = keyValueData;
+      initialData.type = "key-value";
+      delete initialData.linesWithoutTitle;
+      return { newBlockDataFields: initialData };
+    },
+    subBlockAccess: true,
+    accessSubLevel : (levelDetails, blockData)=>{
+      let text = ""
+      if(levelDetails.subBlockId != ''){
+        text = blockData['keyValueData'][levelDetails.subBlockId]['text']
+        if(levelDetails.subSubBlockId != ''){
+          text = blockData['keyValueData'][levelDetails.subBlockId][levelDetails.subSubBlockId]
+           
+        }
       }
-    })
-    initialData.keyValueData = keyValueData
-    initialData.type = "key-value"
-    delete initialData.linesWithoutTitle
-    return initialData    
+      return text
+    }
+  },  
+  
+  csv: {
+    process: (blockId, blockText) => {
+      let initialData = parseDefaultData(blockText);
+      let csvData = [];
+      initialData.linesWithoutTitle.map((line) => {
+        let l = line.replace("-", "").trim();
+        if (l.trim().length > 0) {
+          const parts = l.split(",");
+          csvData.push(parts);
+        }
+      });
+      initialData.csvData = csvData;
+      initialData.type = "csv";
+      delete initialData.linesWithoutTitle;
+      return { newBlockDataFields: initialData };
+    },
+    subBlockAccess: false,
   },
-  "csv":(blockText) => {
-    let initialData = parseDefaultData(blockText)
-    let csvData = []
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        const parts = l.split(",")
-        csvData.push(parts)
+  
+  list: {
+    process: (blockId, blockText) => {
+      let initialData = parseDefaultData(blockText);
+      let listData = ["index item added by default"];
+      initialData.linesWithoutTitle.map((line) => {
+        let l = line.replace("-", "").trim();
+        if (l.trim().length > 0) {
+          listData.push({ text: l });
+        }
+      });
+      initialData.listData = listData;
+      initialData.type = "list";
+      delete initialData.linesWithoutTitle;
+      return { newBlockDataFields: initialData };
+    },
+    subBlockAccess: false,
+  },
+  
+"resource-list": {
+    process: (blockId, blockText) => {
+      let initialData = parseDefaultData(blockText)
+      let resourceData = {}
+      initialData.linesWithoutTitle.map((line) => {
+        let l = line.trim()  
+        if (l.trim().length > 0  && l[0]=='-') {
+          l = l.replace("-","")
+          let parsedObj = stringToObject(l)
+          resourceData[parsedObj.key] = parsedObj.value
+        }
+      });
+      initialData.resourceListData = resourceData;
+      initialData.type = "resource-list"
+      delete initialData.linesWithoutTitle
+      return { newBlockDataFields: initialData }
+    },
+    subBlockAccess: true,
+    accessSubLevel : (levelDetails, blockData)=>{
+      let text = ""
+      if(levelDetails.subBlockId){
+        text = blockData['resourceListData'][levelDetails.subBlockId]['path']
       }
-    })
-    initialData.csvData = csvData
-    initialData.type = "csv"
-    delete initialData.linesWithoutTitle
-    return initialData
+      return text
+    }
   },
-  "list":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
-    let listData = ['index item added by default']
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        listData.push({text:l})
-      }
-    })
-    initialData.listData = listData
-    initialData.type = "list"
-    delete initialData.linesWithoutTitle
-    return initialData
-  },
-  "resource":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
-    initialData.type = "resource"
-    delete initialData.linesWithoutTitle
-    return initialData
-  },
-  "resource-list":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
-    let resourceData = {}
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        let parsedObj = stringToObject(l)
-        resourceData[parsedObj.key] = parsedObj.value
-      }
-    })
-    initialData.resourceListData = resourceData
-    initialData.type = "resource-list"
-    delete initialData.linesWithoutTitle
-    return initialData
-  },
-  "default":(blockText)=>{
-    let data = parseDefaultData(blockText)
-    data.type = "default"
-    delete data.linesWithoutTitle
-    return data
-  }
+  
+default: {
+    process: (blockId, blockText) => {
+      let data = parseDefaultData(blockText)
+      data.type = "default"
+      delete data.linesWithoutTitle
+      return { newBlockDataFields: data }
+    },
+    subBlockAccess: false,
+  }, 
 }
   
 const specialBlocks = [
@@ -249,16 +292,32 @@ const getBlankKnowledgeGraph = ()=>{
   return {...newG}
 }
   
+const removeSpace = (text) =>{
+  let noSpaceText = text.replaceAll(/ +/g,'-')
+  noSpaceText = noSpaceText.toLowerCase()
+  return noSpaceText
+}
+  
 const hashBlockId = (text)=>{
   let txt = text.trim()
-  let isAppend = false
-  if(txt[0]=='+'){
-    txt = txt.substring(1)
-    isAppend = true
-  }
-  txt = txt.replaceAll(/ +/g,'-')
-  txt = txt.toLowerCase()
-  return { isAppend: isAppend, id: txt }
+  
+let isAppend = false
+if(txt[0]=='+'){
+  txt = txt.substring(1)
+  isAppend = true
+}
+  
+let parts = txt.split(".")
+  
+txt = parts[0]
+txt = removeSpace(txt)
+  
+let subId = parts.length >= 2 ? parts[1] : ""
+subId = removeSpace(subId)
+  
+let subSubId = parts.length == 3 ? parts[2] : ""
+subSubId = removeSpace(subSubId)
+  return { isAppend: isAppend, id: txt, subId, subSubId  }
 }
   
   
@@ -267,7 +326,7 @@ const firstPass = (blocks) => {
   let d = getBlankDocObj()
   let g = getBlankDepGraph()
   let kg = getBlankKnowledgeGraph()
-  let edgesToAdd = []
+  let edgesToAddInDepGraph = []
   
 specialBlocks.map(sblock  => {
   d.blocks.push(sblock.name)
@@ -305,7 +364,7 @@ const allAsmts = annotations.invocation.extract(block)
 allAsmts.map(itm=>{
   if(itm.id != newBlock.id){
     d.data[newBlock.id]['annotations']['i']['valid'].push({index,...itm})
-    edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
+    edgesToAddInDepGraph.push({v2:itm.blockId, v1:newBlock.id })
   }
 })
         
@@ -325,24 +384,32 @@ d.data[newBlock.id]['finalText'] =  d.data[newBlock.id]['text']
     }
   })
   
-edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
+edgesToAddInDepGraph.map(edge=>{ try{  g = graph.addEdge(g,edge)}catch(error){} })
   return {d,g,kg}
 }
   
 const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
   
+  
+const invocationText = (invocationData, targetBlockData) =>{
+  
+let level = 0
+if(invocationData.subBlockId){level++}
+if(invocationData.subSubBlockId){level++}
+  if(level > 0){
+    
+if( ! dataType[targetBlockData.type]['subBlockAccess'] ){
+  throw new Error (`Invalid invocation annotation. The block (id:${targetBlockData.name}) (type: ${targetBlockData.type}) cannot be accessed this way. `)
+}
+    
+let subText = dataType[targetBlockData.type]['accessSubLevel'](invocationData, targetBlockData)
+    return subText
+  }else{
+    return targetBlockData['text']
+  }  
+}
 const secondPass = (docObj, kGraph, vertexOrder) => {
   vertexOrder.map(v=>{
-    
-let validAnn = docObj['data'][v.vertexId]['annotations']['i']['valid']
-if(validAnn.length > 0){
-  let mainText = docObj['data'][v.vertexId]['text']
-  validAnn.map(annBlock=>{
-    let annText = docObj['data'][annBlock.blockId]['text']
-    mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
-  }) 
-  docObj['data'][v.vertexId]['text'] = mainText
-}
     
 let validAct = docObj['data'][v.vertexId]['annotations']['at']['valid']
 if(validAct.length > 0){
@@ -370,6 +437,19 @@ if(act.rawSource){
   })
   docObj['data'][v.vertexId]['text'] = mainText2
   docObj['data'][v.vertexId]['title'] = titleText 
+}
+    
+let validAnn = docObj['data'][v.vertexId]['annotations']['i']['valid']
+if(validAnn.length > 0){
+  let mainText = docObj['data'][v.vertexId]['text']
+  validAnn.map(annBlock=>{
+    let targetBlockObj = docObj['data'][annBlock.blockId]
+    targetBlockObj['name'] = annBlock.blockId
+    let invText = invocationText(annBlock,targetBlockObj)
+    let annText = docObj['data'][annBlock.blockId]['text']
+    mainText = mainText.replaceAll(`${annBlock.rawSource}`,invText)
+  }) 
+  docObj['data'][v.vertexId]['text'] = mainText
 }
   })
   return {blockContent: docObj, knowledgeGraph: kGraph }

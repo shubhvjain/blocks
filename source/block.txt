@@ -1,12 +1,19 @@
-This program takes in an annotated document (a collection of blocks) , processes all annotations and generates "Document Object", which contains 4 main objects (along with other useful objects about the doc) : 
-- "blockContent" object which  contains the final values of all  the blocks 
-- "blockDependencyGraph :  a directed acyclic graph which shows the relationships among the blocks 
-- "blockProcessingOrder" : the order in which the blocks must be processed to ensure that, for all blocks, their dependencies are processed before it
-- "knowledgeGraph" : a graph that stores user defined relations between blocks, which are defined in the document using action annotations 
-
 .[+Metadata]
 - title : The source code of the block program written in the block program
-- version: 0.2.0
+
+.[Intro]
+This program takes in an annotated document (text) , breaks the document into blocks and processes all annotations and generates a "Document Object", which contains 4 main objects (along with other useful objects about the doc) : 
+- "blockContent" object which  contains the final values of all the blocks in the document
+- "blockDependencyGraph :  Annotations allows the writer to copy the content of one block into another block of the same document with actually copying and pasting it. This creates a relationship among the blocks which can be easily represented by a directed graph. These dependencies are "valid" only if the directed dependency graph is acyclic (or a DAG) 
+- "blockProcessingOrder" : This graph describes the order in which the blocks must be processed to ensure that, for all block, its dependencies are processed before it
+- "knowledgeGraph" : Annotations also allow a writer to create logical relations between the blocks of a document. These writer defined relations are stored in a knowledge graph. In theory, this graph can now be used to generate a questions answering system based on all the knowledge present in the graph. 
+
+Before describing the program, let's agree on some common terms to use :
+
+.[Common terms] /[data:key-value]
+- document : the input to the program. Some text with annotations
+- writer : refers to the user who wrote the source
+- blocks: the basic unit of processing of the block program. A document is converted to a list of blocks. Each block is separated by a new line 
 
 .[Todo for next version] /[data:list]
 - indexing and accessing sub elements of special data type in invocation annotation and action annotations
@@ -16,6 +23,7 @@ This program takes in an annotated document (a collection of blocks) , processes
 - simplify the way to add edges in knowledge graph, include a way to used the predefined edge labels (so that the directions, label are  consistent throughout the graph)
 - individual processing of action annotation after successful processing (currently they are just removed from the text)
 - implment resource and resource-list data type
+- implement following actions : quote, footnote
 
 Here is the main program : 
 
@@ -61,6 +69,7 @@ We require several utility functions.
   >[method to generate blank block content object]
   >[method to generate blank block dependency graph]
   >[method to generate blank knowledge graph]
+  >[method to remove spaces from a string]
   >[method to hash block name]
 
 Blocks are the smallest units of processing. So we must extract all blocks from a document. 
@@ -104,18 +113,54 @@ const getBlankKnowledgeGraph = ()=>{
   return {...newG}
 }
 
+.[method to remove spaces from a string]
+const removeSpace = (text) =>{
+  let noSpaceText = text.replaceAll(/ +/g,'-')
+  noSpaceText = noSpaceText.toLowerCase()
+  return noSpaceText
+}
+
+A block id can appear in 3 forms :
+- blockName
+- blockName.subBlockName
+- blockName.subBlockName.subSubBlockName
+
 .[method to hash block name]
 const hashBlockId = (text)=>{
   let txt = text.trim()
-  let isAppend = false
-  if(txt[0]=='+'){
-    txt = txt.substring(1)
-    isAppend = true
-  }
-  txt = txt.replaceAll(/ +/g,'-')
-  txt = txt.toLowerCase()
-  return { isAppend: isAppend, id: txt }
+  >[check if block name has append operation]
+  >[split the name]
+  >[process first part of the name]
+  >[process second part of the name]
+  >[process third part of the name]
+  return { isAppend: isAppend, id: txt, subId, subSubId  }
 }
+
+.[check if block name has append operation]
+let isAppend = false
+if(txt[0]=='+'){
+  txt = txt.substring(1)
+  isAppend = true
+}
+
+The append opertation will exists if the block name being precessed comes while working with decleration annotation.
+If it does exists, set the flag and remove it from the text.
+
+.[split the name]
+let parts = txt.split(".")
+
+.[process first part of the name]
+txt = parts[0]
+txt = removeSpace(txt)
+
+.[process second part of the name]
+let subId = parts.length >= 2 ? parts[1] : ""
+subId = removeSpace(subId)
+
+.[process third part of the name]
+let subSubId = parts.length == 3 ? parts[2] : ""
+subSubId = removeSpace(subSubId)
+
 
 The above can be understood more easily with some examples:
 - hash("block name") = "block-name"
@@ -124,8 +169,7 @@ The above can be understood more easily with some examples:
 - hash("  BLOCK   name   ") = "block-name"
 (all the above produces the same output)
 - hash("+block name") = "block-name"
-
-\[todo:implement this] Some block names are reserved for some special purpose.
+- hash("blockname.subid") = "blockname"
 
 Now, the most important part of the programs. The annotation declarations. 
 
@@ -142,7 +186,6 @@ For each type of annotation, we need to specify a few things :
 - how to extract annotations from the block text ?
 - how generate a replacement text for a certain annotation ? (after an annotation is successfully processed, it can either be removed from the processed block text or replaced with some text or left unchanged)
 - how to initiate further processing of extracted annotations?
-
 
 Here is the main object where all annotations are defined :
 
@@ -164,7 +207,7 @@ declaration: {
       let processedSource = rawSource.replaceAll(".[","")
       processedSource = processedSource.replaceAll("]","")
       const blockName = hashBlockId(processedSource)
-      return { rawSource, ...blockName}
+      return { rawSource, isAppend: blockName.isAppend, id: blockName.id }
     },
     generateText: (text)=>{
       const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
@@ -180,14 +223,15 @@ Valid character : all alphanumeric characters and one symbol : dash ("-"). nothi
 invocation: {
     extract: (text) =>{
       const txt = text.trim()
-      const theRegex = /\>\[([\w\s\-]+?)\]/gm
+      const theRegex = /\>\[([\w\s\-]+?)([\.]*)([\w\s\-]*)([\.]*)([\w\s\-]*)\]/gm
       const parts = txt.match(theRegex)
       let asmts = []
       if(parts){
         parts.map(part=>{
           let t = part.replaceAll(">[","")
           t = t.replaceAll("]","")
-          asmts.push({ rawSource: part, blockId: hashBlockId(t)['id']})
+          let processBlockName = hashBlockId(t)
+          asmts.push({ rawSource: part, blockId: processBlockName['id'], subBlockId : processBlockName['subId'], subSubBlockId: processBlockName['subSubId'] })
         })
       }
       return asmts
@@ -241,7 +285,6 @@ This makes life simple: if an action has a single argument, no argument name req
 In the case of actions with multiple arguments, the first argument is always named "text". all other arguments must be named. 
 What will be the format of naming them ? : "action-name: text, arg-name= arg-value , arg-name2= arg-value2  "
 - arguments are separated by comma (which means argument content cannot contain comma \[todo: fix this is later version] )
-As an example : /[data:resource, location= /path/to/file.pdf , down= true ]
 
 Every action will have some common arguments :
 text - this is the default first arguments
@@ -260,7 +303,7 @@ A note on creating new action type methods:
 - the action process method takes in 2 argument : the actionData (which contain action, arguments) , blockData (which mainly contains text)
 - the action process method must return :  newBlockContentFields , newKnowledgeGraphEdge
 
-.[action declarations]
+.[method to parse action argument]
 const parseActionArguments = (argumentText)=>{
   let result = { action:"", arguments:{ text:"",d:"0"}}
   let parts = argumentText.split(":")
@@ -279,13 +322,16 @@ const parseActionArguments = (argumentText)=>{
     }
   return result
 }
-const actions = {
+
+.[action declarations]
+  >[method to parse action argument]
+  const actions = {
   'data': {
     'about':'To declare data type for a block',
     'process':(actionData,blockData)=>{
       let selectedDataType = actionData.arguments.text
-      let processedData = dataType[selectedDataType](blockData.text)
-      return { newBlockDataFields : processedData  }
+      let processedData = dataType[selectedDataType]['process'](blockData.id, blockData.text)
+      return { ... processedData  }
     },
     'generateText':()=>{}
   },
@@ -351,7 +397,7 @@ Including it in the global declarations:
 
 Now we must also talk about processing various datatypes available : 
 
-.[data type processing decleration]
+.[method to parse defualt data type]
 const parseDefaultData = (blockText)=>{
     let data = {title: blockText , noLines: 0, linesWithoutTitle:[] }
     let lines = blockText.split("\n")
@@ -362,94 +408,144 @@ const parseDefaultData = (blockText)=>{
     data.linesWithoutTitle = lines
     return data
 }
+
+.[method to convert string to object]
 const stringToObject = (text)=>{
-  // string is of the form "title: one = two , three = four, five = six"
+  // string is of the form "title: text,  one = two , three = four, five = six"
   let parts1 =  text.split(':')
   let obj = { key: parts1[0].trim() , value: {}  }
   parts1.shift()
-  let agrVal = parts1.join(":")
-  let data = {}
-  let fields = agrVal.split(",")
-  fields.map(field=>{
+  let remaingString = parts1.join(":")
+  let data = { text : remaingString  }
+  let fields = remaingString.split(",")
+  fields.map((field,index)=>{
     let v = field.split("=")
-    data[ v[0].trim() ] = v[1].trim()
+    if(v.length == 2){data[v[0].trim()] =  v[1].trim() }
+    else if(index == 0){ data['text'] = field}
   })
   obj.value = data
   return obj
 }
+
+.[data type processing decleration]
+  >[method to parse defualt data type]
+  >[method to convert string to object]
 const dataType = {
-  "key-value":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
-    let keyValueData = {}
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        const parts = l.split(":")
-        keyValueData[parts[0].trim()] = parts[1].trim()
-      }
-    })
-    initialData.keyValueData = keyValueData
-    initialData.type = "key-value"
-    delete initialData.linesWithoutTitle
-    return initialData    
-  },
-  "csv":(blockText) => {
-    let initialData = parseDefaultData(blockText)
-    let csvData = []
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        const parts = l.split(",")
-        csvData.push(parts)
-      }
-    })
-    initialData.csvData = csvData
-    initialData.type = "csv"
-    delete initialData.linesWithoutTitle
-    return initialData
-  },
-  "list":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
-    let listData = ['index item added by default']
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        listData.push({text:l})
-      }
-    })
-    initialData.listData = listData
-    initialData.type = "list"
-    delete initialData.linesWithoutTitle
-    return initialData
-  },
-  "resource":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
-    initialData.type = "resource"
-    delete initialData.linesWithoutTitle
-    return initialData
-  },
-  "resource-list":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
-    let resourceData = {}
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        let parsedObj = stringToObject(l)
-        resourceData[parsedObj.key] = parsedObj.value
-      }
-    })
-    initialData.resourceListData = resourceData
-    initialData.type = "resource-list"
-    delete initialData.linesWithoutTitle
-    return initialData
-  },
-  "default":(blockText)=>{
-    let data = parseDefaultData(blockText)
-    data.type = "default"
-    delete data.linesWithoutTitle
-    return data
-  }
+  >[data type key-value]
+  >[data type csv]
+  >[data type list]
+  >[data type resource-list]
+  >[data type - default] 
 }
+
+.[data type - default]
+default: {
+    process: (blockId, blockText) => {
+      let data = parseDefaultData(blockText)
+      data.type = "default"
+      delete data.linesWithoutTitle
+      return { newBlockDataFields: data }
+    },
+    subBlockAccess: false,
+  },
+
+.[data type resource-list]
+"resource-list": {
+    process: (blockId, blockText) => {
+      let initialData = parseDefaultData(blockText)
+      let resourceData = {}
+      initialData.linesWithoutTitle.map((line) => {
+        let l = line.trim()  
+        if (l.trim().length > 0  && l[0]=='-') {
+          l = l.replace("-","")
+          let parsedObj = stringToObject(l)
+          resourceData[parsedObj.key] = parsedObj.value
+        }
+      });
+      initialData.resourceListData = resourceData;
+      initialData.type = "resource-list"
+      delete initialData.linesWithoutTitle
+      return { newBlockDataFields: initialData }
+    },
+    subBlockAccess: true,
+    accessSubLevel : (levelDetails, blockData)=>{
+      let text = ""
+      if(levelDetails.subBlockId){
+        text = blockData['resourceListData'][levelDetails.subBlockId]['path']
+      }
+      return text
+    }
+  },
+
+.[data type list]
+  list: {
+    process: (blockId, blockText) => {
+      let initialData = parseDefaultData(blockText);
+      let listData = ["index item added by default"];
+      initialData.linesWithoutTitle.map((line) => {
+        let l = line.replace("-", "").trim();
+        if (l.trim().length > 0) {
+          listData.push({ text: l });
+        }
+      });
+      initialData.listData = listData;
+      initialData.type = "list";
+      delete initialData.linesWithoutTitle;
+      return { newBlockDataFields: initialData };
+    },
+    subBlockAccess: false,
+  },
+
+.[data type csv]
+  csv: {
+    process: (blockId, blockText) => {
+      let initialData = parseDefaultData(blockText);
+      let csvData = [];
+      initialData.linesWithoutTitle.map((line) => {
+        let l = line.replace("-", "").trim();
+        if (l.trim().length > 0) {
+          const parts = l.split(",");
+          csvData.push(parts);
+        }
+      });
+      initialData.csvData = csvData;
+      initialData.type = "csv";
+      delete initialData.linesWithoutTitle;
+      return { newBlockDataFields: initialData };
+    },
+    subBlockAccess: false,
+  },
+
+.[data type key-value]
+"key-value": {
+    process: (blockId, blockText) => {
+      let initialData = parseDefaultData(blockText);
+      let keyValueData = {};
+      initialData.linesWithoutTitle.map((line) => {
+        let l = line.replace("-", "").trim();
+        if (l.trim().length > 0) {
+          const parsedString = stringToObject(l);
+          keyValueData[parsedString.key] = parsedString.value;
+        }
+      });
+      initialData.keyValueData = keyValueData;
+      initialData.type = "key-value";
+      delete initialData.linesWithoutTitle;
+      return { newBlockDataFields: initialData };
+    },
+    subBlockAccess: true,
+    accessSubLevel : (levelDetails, blockData)=>{
+      let text = ""
+      if(levelDetails.subBlockId != ''){
+        text = blockData['keyValueData'][levelDetails.subBlockId]['text']
+        if(levelDetails.subSubBlockId != ''){
+          text = blockData['keyValueData'][levelDetails.subBlockId][levelDetails.subSubBlockId]
+          /[todo:throw error here]
+        }
+      }
+      return text
+    }
+  },  
 
 .[Data type testing]
   >[data type processing decleration]
@@ -485,7 +581,7 @@ Key value store :
 - key1 : value of key 1
 - key2: value of key2
 
-.[+key value store example]
+.[key value store example 1]
 - key3: value of key 3
 
 List :
@@ -496,7 +592,7 @@ List :
 - item 3
 - at this point, i will just have the single level of list 
 
-.[+list example] 
+.[list example 2] 
 - another element
 
 Table:
@@ -507,18 +603,17 @@ Table:
 - 3,4,5
 - 6,7,8
 
-.[+table example]
+.[table example 2]
 - 7,8,9
 - 63,45,67
 
 Resource: a block can also be an external resource 
 
-.[external resource] /[data:resource , path = path/to/file]
 
-.[resource list 1] /[data:resource-list]
+.[resource list 1] 
 - keyForRes1 : path = path , title = Something , note = Something
 
-.[+resource list 1]
+.[resource list 2]
 - keyForRes2 : remote-path = http something , title = something
 
 
@@ -535,9 +630,9 @@ More on resource data type :
 
 What's the point of defining a data type for a block ?
 Now we can access specific parts of a block in invocation annotations. For examples:
-- here is the value of the key named key1 in the block name "key value pair example" : >[key value pair example.key1]
-- here is value of 1st item in the list "list example" : >[list example.1]
-- here is the value from the 1st row and col1 from "table example" : >[table example.1.col1]
+- here is the value of the key named key1 in the block name "key value pair example" : > [key value pair example.key1]
+- here is value of 1st item in the list "list example" : > [list example]
+- here is the value from the 1st row and col1 from "table example" : > [table example.1.col1]
 
 Resources can be used in many ways. the 2  common types of resources will be : images, PDF documents  
 - if it's a pdf file , one can refer to individual pages of the doc
@@ -652,7 +747,7 @@ const firstPass = (blocks) => {
   let d = getBlankDocObj()
   let g = getBlankDepGraph()
   let kg = getBlankKnowledgeGraph()
-  let edgesToAdd = []
+  let edgesToAddInDepGraph = []
 
 .[include special blocks]
 specialBlocks.map(sblock  => {
@@ -691,7 +786,7 @@ const allAsmts = annotations.invocation.extract(block)
 allAsmts.map(itm=>{
   if(itm.id != newBlock.id){
     d.data[newBlock.id]['annotations']['i']['valid'].push({index,...itm})
-    edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
+    edgesToAddInDepGraph.push({v2:itm.blockId, v1:newBlock.id })
   }
 })
 
@@ -720,27 +815,63 @@ d.data[newBlock.id]['finalText'] =  d.data[newBlock.id]['text']
 (this copy of the text with annotations could be useful is generating all sorts of documents!)
 
 .[add edges to dep graph]
-edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
+edgesToAddInDepGraph.map(edge=>{ try{  g = graph.addEdge(g,edge)}catch(error){} })
+
+the try-catch is added to ignore error when adding same edge b/w 2 node more than once. since multiple subblocks of the same block can be accessed in a single block but we just want a single edge for all sub block depedencies 
 
 .[Method to generate block processing order]
 const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
 
 .[Method for Second pass]
+  >[Method for processing invocation values]
 const secondPass = (docObj, kGraph, vertexOrder) => {
   vertexOrder.map(v=>{
-    >[process invocation annotations again]
     >[process action annotations again]
+    >[process invocation annotations again]
   })
   return {blockContent: docObj, knowledgeGraph: kGraph }
 }
+
+why process action annotations before invocation ? to  access a subblock, we need to know the data type of the block. and data types are declared using action annotation 
+
+.[Method for processing invocation values]
+const invocationText = (invocationData, targetBlockData) =>{
+  >[determine the level of block to access]
+  if(level > 0){
+    >[check if sub block access is allowed for this data type]
+    >[access sub block based on the level and data type]
+    return subText
+  }else{
+    return targetBlockData['text']
+  }  
+}
+
+.[determine the level of block to access]
+let level = 0
+if(invocationData.subBlockId){level++}
+if(invocationData.subSubBlockId){level++}
+
+.[check if sub block access is allowed for this data type]
+if( ! dataType[targetBlockData.type]['subBlockAccess'] ){
+  throw new Error (`Invalid invocation annotation. The block (id:${targetBlockData.name}) (type: ${targetBlockData.type}) cannot be accessed this way. `)
+}
+
+.[access sub block based on the level and data type]
+let subText = dataType[targetBlockData.type]['accessSubLevel'](invocationData, targetBlockData)
+
+This method generate the text value for an invocation annoation. the invocation annotation always invloves fetching data from a block (the targetBlock) and replacing it in the destination block. 
+Since sub block elements can be accessed for certain types of blocks, generating the final text invloves reading either the sub block or the sub sub block. This method contains that logic.
 
 .[process invocation annotations again]
 let validAnn = docObj['data'][v.vertexId]['annotations']['i']['valid']
 if(validAnn.length > 0){
   let mainText = docObj['data'][v.vertexId]['text']
   validAnn.map(annBlock=>{
+    let targetBlockObj = docObj['data'][annBlock.blockId]
+    targetBlockObj['name'] = annBlock.blockId
+    let invText = invocationText(annBlock,targetBlockObj)
     let annText = docObj['data'][annBlock.blockId]['text']
-    mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
+    mainText = mainText.replaceAll(`${annBlock.rawSource}`,invText)
   }) 
   docObj['data'][v.vertexId]['text'] = mainText
 }
