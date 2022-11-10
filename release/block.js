@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.6.0 . 
+the Block program. Version 0.7.0 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -148,9 +148,19 @@ const getNodeLabelForKG = (idObj) => {return idObj.id}
           newEdge.v1 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
         },
         "custom":()=>{
-          let allValidLabels = options.graph-edge-labels.keyValueData
+          let allValidLabels = options['graph-edge-labels'].keyValueData
           if(!allValidLabels[edgeDetails.label]){
             throw new Error (`Invalid custom graph edge label : ${edgeDetails.label}`)
+          }
+           
+          let customLabel = allValidLabels[edgeDetails.label]
+          newEdge.label = customLabel.label
+          if(customLabel['input-node']=='v1'){
+            newEdge.v2 = blockData.id
+            newEdge.v1 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
+          }else if(customLabel['input-node']=='v2'){
+            newEdge.v1 = blockData.id
+            newEdge.v2 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
           }
         },
       }
@@ -195,8 +205,9 @@ const dataType = {
       let initialData = parseDefaultData(blockText);
       let keyValueData = {};
       initialData.linesWithoutTitle.map((line) => {
-        let l = line.replace("-", "").trim();
-        if (l.trim().length > 0) {
+        let l = line.trim()  
+        if (l.trim().length > 0  && l[0]=='-') {
+          l = l.replace("-","")
           const parsedString = stringToObject(l);
           keyValueData[parsedString.key] = parsedString.value;
         }
@@ -225,8 +236,8 @@ const dataType = {
       let initialData = parseDefaultData(blockText);
       let csvData = [];
       initialData.linesWithoutTitle.map((line) => {
-        let l = line.replace("-", "").trim();
-        if (l.trim().length > 0) {
+        let l = line.trim()  
+        if (l.trim().length > 0  && l[0]=='-') {
           const parts = l.split(",");
           csvData.push(parts);
         }
@@ -244,8 +255,9 @@ const dataType = {
       let initialData = parseDefaultData(blockText);
       let listData = ["index item added by default"];
       initialData.linesWithoutTitle.map((line) => {
-        let l = line.replace("-", "").trim();
-        if (l.trim().length > 0) {
+        let l = line.trim()  
+        if (l.trim().length > 0  && l[0]=='-') {
+          l = l.replace("-","")
           listData.push({ text: l });
         }
       });
