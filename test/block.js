@@ -133,9 +133,19 @@ const getNodeLabelForKG = (idObj) => {return idObj.id}
           newEdge.v1 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
         },
         "custom":()=>{
-          let allValidLabels = options.graph-edge-labels.keyValueData
+          let allValidLabels = options['graph-edge-labels'].keyValueData
           if(!allValidLabels[edgeDetails.label]){
             throw new Error (`Invalid custom graph edge label : ${edgeDetails.label}`)
+          }
+           
+          let customLabel = allValidLabels[edgeDetails.label]
+          newEdge.label = customLabel.label
+          if(customLabel['input-node']=='v1'){
+            newEdge.v2 = blockData.id
+            newEdge.v1 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
+          }else if(customLabel['input-node']=='v2'){
+            newEdge.v1 = blockData.id
+            newEdge.v2 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
           }
         },
       }
