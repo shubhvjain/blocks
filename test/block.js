@@ -45,7 +45,7 @@ invocation: {
 action: {
   extract: (text) => {
     const txt = text.trim()
-      const theRegex = /\/\[([\s\w\:\,\=\%\.\_\-\/\>\<]+?)\]/gm
+      const theRegex = /\/\[([\s\w\:\,\=\%\.\(\)\_\-\/\>\<]+?)\]/gm
       const parts = txt.match(theRegex)
       let actions = []
       if(parts){
@@ -80,38 +80,70 @@ const parseActionArguments = (argumentText)=>{
     }
   return result
 }
+  
+const getGraphStringParts = (text) => {
+          let dets = {node: "",label: "",direction: ""}
+          if (text.indexOf(')->') > -1) {
+            let parts = text.split(")->")
+            dets.label = parts[0].replace('-(', '')
+            dets.node = parts[1]
+            dets.direction = "from-current"
+          } else if (text.indexOf('<-(') > -1) {
+            let parts = text.split(")-")
+            dets.label = parts[0].replace('<-(', '')
+            dets.node = parts[1]
+            dets.direction = "to-current"
+          } else if (text.indexOf(')') > -1) {
+            let parts = text.split(")")
+            dets.label = parts[0].replace('(', '')
+            dets.node = parts[1]
+            dets.direction = "custom"
+          }
+          return dets
+      }
+  
+const getNodeLabelForKG = (idObj) => {return idObj.id} 
   const actions = {
-  'data': {
+    
+'data': {
     'about':'To declare data type for a block',
-    'process':(actionData,blockData)=>{
+    'process':(actionData,blockData,options={})=>{
       let selectedDataType = actionData.arguments.text
       let processedData = dataType[selectedDataType]['process'](blockData.id, blockData.text)
       return { ... processedData  }
     },
     'generateText':()=>{}
   },
+    
   'graph' :{
     'about':'to add an edge in the knowledge graph',
-    'process': (actionData,blockData)=>{
+    'process': (actionData,blockData,options={})=>{
       let newEdge = {v1:"",v2:"",label:""}
       let text = actionData.arguments.text
-      if(text.indexOf('->') > -1){
-        newEdge.v1 = blockData.id
-        let parts = text.split("->")
-        newEdge.label = parts[0].trim()
-        let theblock = hashBlockId(parts[1].trim())
-        newEdge.v2 = theblock.id
-      }else if(text.indexOf('<-') > -1){
-        newEdge.v2 = blockData.id
-        let parts = text.split("<-")
-        newEdge.label = parts[0].trim()
-        let theblock = hashBlockId(parts[1].trim())
-        newEdge.v1 = theblock.id
+      let edgeDetails = getGraphStringParts(text)
+      const processType = {
+        "to-current":()=>{
+          newEdge.label = edgeDetails.label
+          newEdge.v1 = blockData.id
+          newEdge.v2 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
+        },
+        "from-current":()=>{
+          newEdge.label = edgeDetails.label
+          newEdge.v2 = blockData.id
+          newEdge.v1 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
+        },
+        "custom":()=>{
+          let allValidLabels = options.graph-edge-labels.keyValueData
+          if(!allValidLabels[edgeDetails.label]){
+            throw new Error (`Invalid custom graph edge label : ${edgeDetails.label}`)
+          }
+        },
       }
+      processType[edgeDetails.direction]()
       return {newKnowledgeGraphEdge : newEdge }
     }
   }
-}
+ }
   
   
 const parseDefaultData = (blockText)=>{
@@ -260,7 +292,7 @@ const specialBlocks = [
     note:"some meta data related to the doc"
   },
   {
-    name: "graph-edge-names",
+    name: "graph-edge-labels",
     type:"key-value",
     note:"to keep metadata realted to graph edges in the knowledge graph"
   },
@@ -416,7 +448,10 @@ if(validAct.length > 0){
   validAct.map(act=>{
     
 if(actions[act.action]){
-  let actionEval = actions[act.action]['process'](act,{...docObj['data'][v.vertexId], id: v.vertexId })
+  let additionalOptions =  { 
+     "graph-edge-labels": docObj['data']['graph-edge-labels']
+   }
+  let actionEval = actions[act.action]['process'](act,{...docObj['data'][v.vertexId], id: v.vertexId },additionalOptions)
   if(actionEval.newBlockDataFields){
     let newBlockData = { ... docObj['data'][v.vertexId], ... actionEval.newBlockDataFields  }
     docObj['data'][v.vertexId] = newBlockData

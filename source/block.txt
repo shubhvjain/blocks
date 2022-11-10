@@ -22,7 +22,7 @@ Before describing the program, let's agree on some common terms to use :
 - add more error handing 
 - simplify the way to add edges in knowledge graph, include a way to used the predefined edge labels (so that the directions, label are  consistent throughout the graph)
 - individual processing of action annotation after successful processing (currently they are just removed from the text)
-- implment resource and resource-list data type
+- implment  resource-list data type
 - implement following actions : quote, footnote
 
 Here is the main program : 
@@ -242,7 +242,7 @@ invocation: {
 action: {
   extract: (text) => {
     const txt = text.trim()
-      const theRegex = /\/\[([\s\w\:\,\=\%\.\_\-\/\>\<]+?)\]/gm
+      const theRegex = /\/\[([\s\w\:\,\=\%\.\(\)\_\-\/\>\<]+?)\]/gm
       const parts = txt.match(theRegex)
       let actions = []
       if(parts){
@@ -323,40 +323,80 @@ const parseActionArguments = (argumentText)=>{
   return result
 }
 
+.[method to parse graph string]
+const getGraphStringParts = (text) => {
+          let dets = {node: "",label: "",direction: ""}
+          if (text.indexOf(')->') > -1) {
+            let parts = text.split(")->")
+            dets.label = parts[0].replace('-(', '')
+            dets.node = parts[1]
+            dets.direction = "from-current"
+          } else if (text.indexOf('<-(') > -1) {
+            let parts = text.split(")-")
+            dets.label = parts[0].replace('<-(', '')
+            dets.node = parts[1]
+            dets.direction = "to-current"
+          } else if (text.indexOf(')') > -1) {
+            let parts = text.split(")")
+            dets.label = parts[0].replace('(', '')
+            dets.node = parts[1]
+            dets.direction = "custom"
+          }
+          return dets
+      }
+
+.[method to get node label for knowledge graph]
+const getNodeLabelForKG = (idObj) => {return idObj.id} 
+
 .[action declarations]
   >[method to parse action argument]
+  >[method to parse graph string]
+  >[method to get node label for knowledge graph]
   const actions = {
-  'data': {
+    >[data action]
+    >[graph action]
+ }
+
+.[data action]
+'data': {
     'about':'To declare data type for a block',
-    'process':(actionData,blockData)=>{
+    'process':(actionData,blockData,options={})=>{
       let selectedDataType = actionData.arguments.text
       let processedData = dataType[selectedDataType]['process'](blockData.id, blockData.text)
       return { ... processedData  }
     },
     'generateText':()=>{}
   },
+
+.[graph action]
   'graph' :{
     'about':'to add an edge in the knowledge graph',
-    'process': (actionData,blockData)=>{
+    'process': (actionData,blockData,options={})=>{
       let newEdge = {v1:"",v2:"",label:""}
       let text = actionData.arguments.text
-      if(text.indexOf('->') > -1){
-        newEdge.v1 = blockData.id
-        let parts = text.split("->")
-        newEdge.label = parts[0].trim()
-        let theblock = hashBlockId(parts[1].trim())
-        newEdge.v2 = theblock.id
-      }else if(text.indexOf('<-') > -1){
-        newEdge.v2 = blockData.id
-        let parts = text.split("<-")
-        newEdge.label = parts[0].trim()
-        let theblock = hashBlockId(parts[1].trim())
-        newEdge.v1 = theblock.id
+      let edgeDetails = getGraphStringParts(text)
+      const processType = {
+        "to-current":()=>{
+          newEdge.label = edgeDetails.label
+          newEdge.v1 = blockData.id
+          newEdge.v2 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
+        },
+        "from-current":()=>{
+          newEdge.label = edgeDetails.label
+          newEdge.v2 = blockData.id
+          newEdge.v1 = getNodeLabelForKG(hashBlockId(edgeDetails.node))
+        },
+        "custom":()=>{
+          let allValidLabels = options.graph-edge-labels.keyValueData
+          if(!allValidLabels[edgeDetails.label]){
+            throw new Error (`Invalid custom graph edge label : ${edgeDetails.label}`)
+          }
+        },
       }
+      processType[edgeDetails.direction]()
       return {newKnowledgeGraphEdge : newEdge }
     }
   }
-}
 
 How to add an edge in the knowledge graph ?
 Using action annotation "graph"
@@ -366,29 +406,11 @@ Format : graph: {edge label} {arrow} {block name}
 
 Eg:
 
-.[c1] /[graph: current to specified -> c2] Hello c1
+.[c1] /[graph: -(current to specified)-> c2] Hello c1
 
-.[c2] /[graph: specified to current <- c3] Hello c2
+.[c2] /[graph: <-(specified to current)- c3] Hello c2
 
 .[c3] Hello c3
-
-Testing some parts of the code :
-
-.[testing actions]
-  >[action declarations]
-  >[Annotation declarations]
-  const testActionArguments = ()=>{
-    console.log(parseActionArguments("test-action1"))
-    console.log(parseActionArguments("test-action2:this is just one test argument"))
-    console.log(parseActionArguments("test-action3:one, two = tr , three =  this is good  , four= haha "))
-    console.log(parseActionArguments(""))
-  }
-  const testActionExtractions = ()=>{
-    console.log(annotations.action.extract(`this is the text /[type:one] , /[type1:two, three=four  , five= six seven] , /[eight ] `))
-    console.log(annotations.action.extract(`>[about action args]`))
-  }
-  testActionArguments()
-  testActionExtractions()
 
 Including it in the global declarations:
 
@@ -547,18 +569,6 @@ default: {
     }
   },  
 
-.[Data type testing]
-  >[data type processing decleration]
-  let data = [
-    { type:"default", value:`>[default text block 1]`},
-    { type:"default", value:`>[default multiline block]`},
-    {type:'csv',value:`>[table example]` },
-    {type:'key-value',value:`>[key value store example]` },
-    {type:'list',value:`>[list example]` },
-    {type:'resource-list',value:`>[resource list 1]` },
-  ]
-  data.map(dt=>{console.log(dataType[dt.type](dt.value))})
-
 Including it in the global declarations:
 
 .[+global declarations]
@@ -656,7 +666,7 @@ const specialBlocks = [
     note:"some meta data related to the doc"
   },
   {
-    name: "graph-edge-names",
+    name: "graph-edge-labels",
     type:"key-value",
     note:"to keep metadata realted to graph edges in the knowledge graph"
   },
@@ -896,7 +906,10 @@ Because the title and text is processed by the "data" action which means they mu
 
 .[execute the action and process it]
 if(actions[act.action]){
-  let actionEval = actions[act.action]['process'](act,{...docObj['data'][v.vertexId], id: v.vertexId })
+  let additionalOptions =  { 
+     "graph-edge-labels": docObj['data']['graph-edge-labels']
+   }
+  let actionEval = actions[act.action]['process'](act,{...docObj['data'][v.vertexId], id: v.vertexId },additionalOptions)
   if(actionEval.newBlockDataFields){
     let newBlockData = { ... docObj['data'][v.vertexId], ... actionEval.newBlockDataFields  }
     docObj['data'][v.vertexId] = newBlockData
