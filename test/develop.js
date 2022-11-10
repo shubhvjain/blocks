@@ -34,9 +34,9 @@ const generateExplorerDocForDocUsingTest = async (docPath)=>{
   console.log(`generated : test/explorer-${name}.html`)
 }
 
-const generateCodeFileFromSomeSource = async (docPath,fileName,blockName)=>{
+const generateCodeFileFromSomeSource = async (docPath,fileName,fileType,blockName)=>{
   let fileContent = await getFile(docPath)
-  const processedDoc  = await blockLatest.generateOutputDoc(fileContent,{type:"file-with-entry", main:blockName})
+  const processedDoc  = await blockTest.generateOutputDoc(fileContent,{type:fileType, main:blockName})
   await saveFile(`test/${fileName}`,processedDoc)
   console.log(`test/${fileName} created!`)
 }
@@ -51,6 +51,7 @@ const main = async ()=>{
 2: generate explorer doc for source/block.txt using release/block.js
 3: generate explorer doc for source/block.txt using test/block.js
 4: generate test file also give 'path-to-source-file' 'filename' 'block-id' (new file will be stored in test folder only)
+5: generate doc using test/block.js : arg: 'path-to-source-file' 'filename' 'docType (file-with-entry,explorer)' 'block-id'
 `
       console.log(help)
     },
@@ -62,7 +63,10 @@ const main = async ()=>{
       await generateExplorerDocForSourceUsingTest()
     },
     4: async ()=>{
-      await generateCodeFileFromSomeSource(process.argv[3],process.argv[4],process.argv[5])
+      await generateCodeFileFromSomeSource(process.argv[3],process.argv[4],"file-with-entry",process.argv[5])
+    },
+    5: async ()=>{
+      await generateCodeFileFromSomeSource(process.argv[3],process.argv[4],process.argv[5],process.argv[6])
     },
   }
   if(!cmds[cmdName]){throw new Error("invalid command. use '0' for list of available commands")}
