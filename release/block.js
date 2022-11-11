@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.7.1 . 
+the Block program. Version 0.7.3 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -238,6 +238,7 @@ const dataType = {
       initialData.linesWithoutTitle.map((line) => {
         let l = line.trim()  
         if (l.trim().length > 0  && l[0]=='-') {
+          l = l.replace("-","")
           const parts = l.split(",");
           csvData.push(parts);
         }

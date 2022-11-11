@@ -169,14 +169,14 @@ const parseDefaultData = (blockText)=>{
   
 const stringToObject = (text)=>{
   // string is of the form "title: text,  one = two , three = four, five = six"
-  let parts1 =  text.split(':')
+  let parts1 =  text.split(' : ')
   let obj = { key: parts1[0].trim() , value: {}  }
   parts1.shift()
-  let remaingString = parts1.join(":")
+  let remaingString = parts1.join(" : ")
   let data = { text : remaingString  }
   let fields = remaingString.split(",")
   fields.map((field,index)=>{
-    let v = field.split("=")
+    let v = field.split(" = ")
     if(v.length == 2){data[v[0].trim()] =  v[1].trim() }
     else if(index == 0){ data['text'] = field}
   })
@@ -223,6 +223,7 @@ const dataType = {
       initialData.linesWithoutTitle.map((line) => {
         let l = line.trim()  
         if (l.trim().length > 0  && l[0]=='-') {
+          l = l.replace("-","")
           const parts = l.split(",");
           csvData.push(parts);
         }
@@ -572,6 +573,141 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
             <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
           </html> `
       return explorerHTML
+    },
+    "kg": async ()=>{
+      const Document = generateDocObject(doc,options) 
+      const allGraphs = [Document.knowledgeGraph]
+      const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
+      const sanitizeArrows = (text)=>{
+        let sText = text.replaceAll("<","&lt;").replaceAll(">","&gt;")
+        return sText
+      }
+      let kgHTML = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document Explorer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+    ${graphHTML.head}
+      <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+      <script>
+      MathJax.Hub.Config({
+      showMathMenu: false,
+      tex2jax: { inlineMath: [["\$", "\$"]],displayMath:[["\$\$", "\$\$"]] },
+      menuSettings: { zoom: "Double-Click", zscale: "150%" },
+      CommonHTML: { linebreaks: { automatic: true } },
+      "HTML-CSS": { linebreaks: { automatic: true } },
+      SVG: { linebreaks: { automatic: true } }
+    });
+    </script>
+  </head>
+  <body>
+    <style>.graph { width: 90%; height: 80vh; border: 1px solid #80808036;} </style>
+    <div class="container-lg">
+      <div class="row mt-1">
+        <div class="col-lg-7">
+          ${graphHTML.body}
+          <script>
+            const blockContent = ${JSON.stringify(Document['blockContent'])}
+            network0.on("click", function(event) {
+              if (event.nodes.length == 1) {showBlockContent(event.nodes[0])}
+            })
+            const renderMaths = ()=>{MathJax['Hub'].Queue(["Typeset", MathJax.Hub], 'nodeDetails')}
+            let showBlockContent = (blockName) => {
+              let blockData = blockContent.data[blockName]
+              const convertors = {
+                'default': (data) => {
+                  return \`<div> \${data.text.replaceAll('\\n','<br>')}</div>\`
+                },
+                'key-value': (data) => {
+                	let objToTable = (obj)=>{
+                  	let objKeys = Object.keys(obj)
+                    let tab = \`\`
+                    if(objKeys.length==1 && objKeys[0]=='text'){
+                     tab =  \`<p>\${obj.text}</p>\`
+                    }else{
+                    	objKeys.map(ky=>{
+                      	if(ky=='text'){ tab += \`<p>\${obj[ky]}</p>\` }
+                        else{ tab += \`<p> <b>\${ky}</b> : \${obj[ky]} </p>\`}
+                      })
+                    }
+                    return tab
+                  }
+                	let allkeys = Object.keys(data.keyValueData)
+                  let tab= \` \`
+                  allkeys.map(ky=>{
+                  tab += \`<tr> <td> <b>\${ky}</b></td><td> \${objToTable(data.keyValueData[ky])} </td></tr>\`
+                  })
+                  return \`<table class="table"> \${tab} </table>\`
+                },
+                'list': (data) => {
+                	let lt = data.listData
+                  lt.shift()
+                  let litag = ""
+                  lt.map(l=>{ litag += \`<li>\${l.text}</li>\`  })
+                  return \`<ul>\${litag}</ul>\`
+                },
+                'resource-list': (data) => {
+                  let ress = data.resourceListData
+                  let rkeys = Object.keys(ress)
+                  let cards = \` \`
+                  rkeys.map(res=>{
+                  	let rData = ress[res]
+                    console.log(rData)
+                    cards += \`
+                      <div class="card">
+  <div class="card-body">
+    <h5 class="card-title"><code>\${res}</code> | \${rData.title|| 'Resource'}</h5>
+    <p> Path: \${rData.path}</p><a href="\${rData.path}" target="_blank">Open</a></div></div> <br>\`
+                  })
+                  return cards
+                },
+                'csv': (data) => {
+                	let cv = data.csvData
+                  let tab = \`\`
+                  cv.map((c,index)=>{
+                  	tab += "<tr>"
+                  	c.map(cc=>{
+                    	if(index==0){ tab += \`<th>\${cc}</th>\`
+                      }else{tab += \`<td>\${cc}</td>\`}
+                    })
+  									tab += "</tr>"
+                  })
+                  return \`<table class="table table-striped-columns"> \${tab} </table>\`
+                }
+              }
+              let htmlcontent = convertors[blockData.type](blockData)
+              const divId = document.getElementById("nodeDetails")
+              divId.innerHTML = \`<h3> \${blockName}</h3><hr> \${htmlcontent} \`
+						renderMaths()
+            }
+          </script>
+        </div>
+        <div class="col-lg-5">
+          <div id="nodeDetails">
+            <p class="text-secondary">Click on a node to show it's content</p>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-lg-12">
+          <details>
+            <summary> Details </summary>
+            <h4> Source </h4>
+            <pre>${sanitizeArrows(doc)}</pre>
+            <hr>
+            <h4> Document object </h4>
+            <pre>${sanitizeArrows(JSON.stringify(Document.blockContent,null,1))}</pre>
+          </details>
+        </div>
+      </div>
+    </div>
+  </body>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+</html>`
+      return kgHTML
     }
   }
   const docContent = await  docTypes[options.type]()
