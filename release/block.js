@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.8.0 . 
+the Block program. Version 0.8.1 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -655,14 +655,14 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
                   allkeys.map(ky=>{
                   tab += \`<tr> <td> <b>\${ky}</b></td><td> \${objToTable(data.keyValueData[ky])} </td></tr>\`
                   })
-                  return \`<table class="table"> \${tab} </table>\`
+                  return \`<p>\${data.title?data.title:""}</p><table class="table"> \${tab} </table>\`
                 },
                 'list': (data) => {
                 	let lt = data.listData
                   lt.shift()
                   let litag = ""
                   lt.map(l=>{ litag += \`<li>\${l.text}</li>\`  })
-                  return \`<ul>\${litag}</ul>\`
+                  return \`<p>\${data.title?data.title:""}</p><ul>\${litag}</ul>\`
                 },
                 'resource-list': (data) => {
                   let ress = data.resourceListData
@@ -690,7 +690,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
                     })
   									tab += "</tr>"
                   })
-                  return \`<table class="table table-striped-columns"> \${tab} </table>\`
+                  return \`<p>\${data.title?data.title:""}</p><table class="table table-striped-columns"> \${tab} </table>\`
                 }
               }
               let htmlcontent = convertors[blockData.type](blockData)
