@@ -1008,7 +1008,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
     "kg": async ()=>{
       const Document = generateDocObject(doc,options) 
       const allGraphs = [Document.knowledgeGraph]
-      const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
+      const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts',showVertexCreatedOrder:true })
       const sanitizeArrows = (text)=>{
         let sText = text.replaceAll("<","&lt;").replaceAll(">","&gt;")
         return sText

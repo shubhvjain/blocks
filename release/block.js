@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.8.1 . 
+the Block program. Version 0.8.3 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -592,7 +592,7 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
     "kg": async ()=>{
       const Document = generateDocObject(doc,options) 
       const allGraphs = [Document.knowledgeGraph]
-      const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
+      const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts',showVertexCreatedOrder:true })
       const sanitizeArrows = (text)=>{
         let sText = text.replaceAll("<","&lt;").replaceAll(">","&gt;")
         return sText
