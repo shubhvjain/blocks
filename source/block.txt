@@ -956,6 +956,10 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
       const Document = generateDocObject(doc,options) 
       return Document['blockContent']['data'][options.main]['text']
     },
+    "doc-obj": async ()=>{
+      const Document = generateDocObject(doc,options) 
+      return JSON.stringify(Document,null,2)
+    },
     "explorer": async ()=>{
       const Document = generateDocObject(doc,options) 
       const allGraphs = [ Document.blockDependencyGraph, Document.knowledgeGraph, Document.dfsTree, Document.tsTree ]

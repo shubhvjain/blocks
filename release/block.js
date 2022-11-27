@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.8.3 . 
+the Block program. Version 0.8.4 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -539,6 +539,10 @@ const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
       if(!options.main){throw new Error("Specify the main block Id which contains the code")}
       const Document = generateDocObject(doc,options) 
       return Document['blockContent']['data'][options.main]['text']
+    },
+    "doc-obj": async ()=>{
+      const Document = generateDocObject(doc,options) 
+      return JSON.stringify(Document,null,2)
     },
     "explorer": async ()=>{
       const Document = generateDocObject(doc,options) 
