@@ -2,8 +2,7 @@
  * to use the block program in the terminal
  */
  const fs = require("fs/promises");
-const block = require("./block")
-
+const gDoc = require("./genDoc")
 
 const getFile = async (filePath) => {
   const data = await fs.readFile(filePath, { encoding: "utf8" });
@@ -29,10 +28,12 @@ const main = async ()=>{
       const entryBlock  = process.argv[5]
       if(!entryBlock){throw new Error("Provide entry block name: 4th arg")}
 
-      const doc = await getFile(inputPath)
-      const processedDoc  = await block.generateOutputDoc(doc,{type: cmdType , main:entryBlock})
-      await saveFile(outputPath,processedDoc)
-      console.log("Done!")
+      try {
+        const doc = await getFile(inputPath)
+        const processedDoc  = await gDoc.generateOutput(doc,{type: cmdType , main:entryBlock})
+        await saveFile(outputPath,processedDoc)
+        console.log("Done!") 
+      } catch (error) { console.log("Unble to generate output") }
    }
   }
   await  progs['build']()

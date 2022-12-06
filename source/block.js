@@ -1,77 +1,40 @@
 /*** 
-The Block program. Version 0.2.0 . 
+the Block program. Version 0.9.0 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
-
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
-
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
-
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/> 
-
 ***/
 
-const graph = require('./graph')
-const annotations = {  
-declaration: {
-  extract:(text)=>{
-      const tx = text.trim()
-      const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
-      const parts = tx.match(theRegex)
-      let rawSource = `.[${randomInteger(10000,99999)}]`
-      if(parts){rawSource = parts[0]}
-      let processedSource = rawSource.replaceAll(".[","")
-      processedSource = processedSource.replaceAll("]","")
-      const blockName = hashBlockId(processedSource)
-      return { rawSource, ...blockName}
-    },
-    generateText: (text)=>{
-      const theRegex = /^\.\[([\+]?)([\w\s\-]+?)\]/gm
-      return text.replaceAll(theRegex,"")
-    }
-},
-invocation: {
-    extract: (text) =>{
-      const txt = text.trim()
-      const theRegex = /\>\[([\w\s\-]+?)\]/gm
-      const parts = txt.match(theRegex)
-      let asmts = []
-      if(parts){
-        parts.map(part=>{
-          let t = part.replaceAll(">[","")
-          t = t.replaceAll("]","")
-          asmts.push({ rawSource: part, blockId: hashBlockId(t)['id']})
-        })
-      }
-      return asmts
-    }
-},
-action: {
-  extract: (text) => {
-    const txt = text.trim()
-      const theRegex = /\/\[([\s\w\:\,\=\%\.\_\-\/\>\<]+?)\]/gm
-      const parts = txt.match(theRegex)
-      let actions = []
-      if(parts){
-        parts.map(part=>{
-          let t = part.replaceAll("/[","")
-          t = t.replaceAll("]","")
-          let actionInfo = parseActionArguments(t)
-          actions.push({ rawSource: part, ...actionInfo  })
-        })
-      }
-      return actions
-  }
+const graph = require("./graph")
+const generateDocumentObject = (document,options={})=>{
+  const DEV = false 
+  
+const removeSpace = (text) =>{
+  let noSpaceText = text.trim().replaceAll(/ +/g,'-')
+  noSpaceText = noSpaceText.toLowerCase()
+  return noSpaceText
 }
-} 
- 
+
+const randomInteger = (min=0,max=100) => { return Math.floor(Math.random() * (max - min + 1) + min)}  
+
+const getParts = (text)=>{
+  let parts = text.split(".")
+  let data = { blockId:"", subPart:"", subSubPart:""}
+  data.blockId = removeSpace(parts[0])
+  data.subPart = parts.length >= 2 ? removeSpace(parts[1]) : ""
+  data.subSubPart = parts.length == 3 ? removeSpace(parts[2]) : ""
+  return data
+}
+
 const parseActionArguments = (argumentText)=>{
   let result = { action:"", arguments:{ text:"",d:"0"}}
   const parts = argumentText.split(":")
@@ -89,40 +52,127 @@ const parseActionArguments = (argumentText)=>{
   }
   return result
 }
-const actions = {
-  'data': {
-    'about':'To declare data type for a block',
-    'process':(actionData,blockData)=>{
-      let selectedDataType = actionData.arguments.text
-      let processedData = dataType[selectedDataType](blockData.text)
-      return { newBlockDataFields : processedData  }
-    },
-    'generateText':()=>{}
-  },
-  'graph' :{
-    'about':'to add an edge in the knowledge graph',
-    'process': (actionData,blockData)=>{
-      let newEdge = {v1:"",v2:"",label:""}
-      let text = actionData.arguments.text
-      if(text.indexOf('->') > -1){
-        newEdge.v1 = blockData.id
-        let parts = text.split("->")
-        newEdge.label = parts[0].trim()
-        let theblock = hashBlockId(parts[1].trim())
-        newEdge.v2 = theblock.id
-      }else if(text.indexOf('<-') > -1){
-        newEdge.v2 = blockData.id
-        let parts = text.split("<-")
-        newEdge.label = parts[0].trim()
-        let theblock = hashBlockId(parts[1].trim())
-        newEdge.v1 = theblock.id
-      }
-      return {newKnowledgeGraphEdge : newEdge }
+
+const annotations = {
+  declaration: {
+    extract : (text)=>{
+          const reg = /^\.\[([\+]?)([\w\s\-]+?)([,]*?)([\w\s\-]+?)\]/gm
+  	  const parts = text.match(reg)
+  	  if (parts) {
+    	  let ann = { raw: parts[0], text: "", blockId: "", processed: false,
+	             dataType: "default", found: true, type: "declaration" }
+          const theString = parts[0]
+	     .replace(".[", "")
+	     .replace("]", "")
+	     .trim()
+          ann.text = theString
+          let part1 = theString.split(",")
+          ann.blockId = removeSpace(part1[0])
+          if (part1.length > 1) {ann.dataType = part1[1].trim()}
+          return [ann]
+         } else { return []}
     }
+  },
+  append:{
+      extract : (text)=>{
+      	  const reg = /^\+\[([\+]?)([\w\s\-]+?)\]/gm
+          const parts = text.match(reg)
+  	  if (parts) {
+    	     let ann = { type: "append",  raw: parts[0],    text: "",
+                blockId: "",  found: true,  processed:false }
+    	      const theString = parts[0]
+	      .replace("+[", "").replace("]", "").trim()
+    	      ann.text = theString
+    	      ann.blockId = removeSpace(theString)
+    	      return [ann]
+  	  } else { return []}}
+  },
+  invocation:{
+      extract : (text)=>{
+         const reg = /\>\[([\w\s\-]+?)([\.]*)([\w\s\-]*)([\.]*)([\w\s\-]*)\]/gm
+         const parts = text.match(reg)
+         if (parts) {
+            let anns = []
+             parts.map(part => {
+               let ann = { type: "invocation", raw: part, text: "",
+                           blockId: "", subPart: "", subSubPart: "",
+                            found: true, processed: false}
+                const theString = part.replace(">[", "").replace("]", "").trim()
+                 ann.text = theString
+	         let data = getParts(theString)
+                 ann = {...ann,...data}
+      		 anns.push(ann)
+              })
+              return anns
+          } else { return []}	  
+      }
+  },
+  edge:{
+      extract : (text)=>{
+      	  const reg = /\~\[([\w\s\-\,\.]+?)\]/gm
+    	  const parts = text.match(reg)
+    	  if (parts) {
+      	     let anns = []
+      	     parts.map(part => {
+             let ann = {
+             	 type: "edge", raw: part, text: "",
+		v1:"", v2:"", label:"",
+          	found: true, processed: false}
+              const theString = part.replace("~[", "").replace("]", "").trim()
+              ann.text = theString
+              let part1 = theString.split(",")
+              if(part1.length == 2){
+        	ann.v2 = removeSpace(part1[1])
+          	ann.label = removeSpace(part1[0])
+              } 
+              else if (part1.length == 3){
+        	ann.v1 = removeSpace(part1[0])
+        	ann.v2 = removeSpace(part1[2])
+                ann.label = part1[1]
+              }else{
+        	throw new Error(` Invalid edge annotation : ${part}. Format :  or  (node 1 will be the current block id)`)
+              }
+              anns.push(ann)
+      	    })
+      	    return anns    
+    	  }else{return []}
+	  }
+  },
+  action:{
+      extract : (text)=>{
+        const reg = /\/\[([\s\w\:\,\=\%\.\_\-\/\>\<]+?)\]/gm
+        const parts = text.match(reg)
+        if (parts) {
+          let anns = []
+          parts.map(part => {
+            let ann = {
+               type: "action", raw: part, text: "",
+        	action: "", arguments:{},found: true, processed: false}
+              const theString = part.replace("/[", "").replace("]", "").trim()
+              ann.text = theString
+              let part1 = parseActionArguments(theString)
+              ann = {...ann, ...part1}
+              anns.push(ann)
+           })
+          return anns
+        } else {return []}
+      }
   }
-} 
- 
-  
+}
+
+const extractAllAnnotations = (text)=>{
+  let refText = text.trim()
+  let annotationList = []
+  let annCount = {}
+  const allAnnotations = Object.keys(annotations)
+  allAnnotations.map(ann=>{
+     let anns = annotations[ann].extract(text)
+     annCount[ann] = anns.length
+     annotationList = [... annotationList, ... anns]
+  })
+  return {stats : annCount, annotations: annotationList}
+}
+
 const parseDefaultData = (blockText)=>{
     let data = {title: blockText , noLines: 0, linesWithoutTitle:[] }
     let lines = blockText.split("\n")
@@ -217,251 +267,192 @@ const dataType = {
     return data
   }
 } 
- 
   
-const specialBlocks = [
-  {
-    name: "outputs",
-    type:"key-value",
-    note:"To store various output files that can be generated using this doc"
-  },
-  {
-    name: "metadata",
-    type:"key-value",
-    note:"some meta data related to the doc"
-  },
-  {
-    name: "graph-edge-names",
-    type:"key-value",
-    note:"to keep metadata realted to graph edges in the knowledge graph"
-  },
-  {
-    name: "graph-queries",
-    type:"key-value",
-    note:"to store knowledge graph queries "
-  }
-] 
+let blocks = document.split("\n\n")
   
-  
-const docToBlocks = (doc,splitter)=>{ return doc.split(splitter)}
-  
-const randomInteger = (min=0,max=100) => { return Math.floor(Math.random() * (max - min + 1) + min)}  
-  
-const print = (obj,indent=1)=>{console.log(JSON.stringify(obj,null,indent))} 
-  
-const getBlankDocObj = ()=>{ return { blocks:[], data:{}}}
-  
-const getBlankDepGraph = ()=>{
-  let newG = graph.createGraph({ title:"Block Dependency graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
-  return {...newG}
+
+let docObject = {
+  valid : true ,
+  blocks :[] ,
+  data : {} ,
+  graphs : {} ,
+  errors : [],
+  warnings: [],
+  metadata : {},
+  extra: {}
 }
-  
-const getBlankKnowledgeGraph = ()=>{
-  let newG = graph.createGraph({ title:"Doc knowledge graph", hasLoops: false, hasDirectedEdges: true,  isSimple: true })
-  const defaultVertices = ['summary','todo']
-  defaultVertices.map(ver=>{ newG = graph.addVertex(newG,{ id: ver, data: {} }) })
-  return {...newG}
-}
-  
-const hashBlockId = (text)=>{
-  let txt = text.trim()
-  let isAppend = false
-  if(txt[0]=='+'){
-    txt = txt.substring(1)
-    isAppend = true
-  }
-  txt = txt.replaceAll(/ +/g,'-')
-  txt = txt.toLowerCase()
-  return { isAppend: isAppend, id: txt }
-}
-  
-  
-const firstPass = (blocks) => {
-  
-  let d = getBlankDocObj()
-  let g = getBlankDepGraph()
-  let kg = getBlankKnowledgeGraph()
-  let edgesToAdd = []
-  
-specialBlocks.map(sblock  => {
-  d.blocks.push(sblock.name)
-  d.data[sblock.name] = {
-    rawText: [],
-    text:"",
-    annotations: { d:{ }, i:{valid: []}, at:{valid: [{action:"data",arguments:{"text": sblock.type }}]}}
-  }
-  g = graph.addVertex(g,{id:sblock.name})
-  kg = graph.addVertex(kg,{id:sblock.name})
+
+docObject.graphs.deps = graph.createGraph({
+ isSimple : true,
+ hasLoops: false,
+ hasDirectedEdges: true, 
+ title: "Invocation block dependency graph"
 })
-  blocks.map((block,index)=>{
-    if(block){
-        
-const newBlock = annotations.declaration.extract(block)
-const processedText = annotations.declaration.generateText(block)
-if(d.blocks.indexOf(newBlock.id)==-1){
-  d.blocks.push(newBlock.id)
-  let data = {
-    rawText: [{block,index}],
-    text:processedText,
-    annotations: { d:{index, ...newBlock}, i:{valid: []}, at:{valid: []}}
-  }
-  d.data[newBlock.id] = data
-  g = graph.addVertex(g,{id:newBlock.id})
-  kg = graph.addVertex(kg,{id:newBlock.id})
-}else{
-  if(newBlock.isAppend){
-    d.data[newBlock.id]['text'] += processedText
-    d.data[newBlock.id]['rawText'].push({block,index})
-  }
-}
-        
-const allAsmts = annotations.invocation.extract(block)
-allAsmts.map(itm=>{
-  if(itm.id != newBlock.id){
-    d.data[newBlock.id]['annotations']['i']['valid'].push({index,...itm})
-    edgesToAdd.push({v2:itm.blockId, v1:newBlock.id })
-  }
+docObject.graphs.knowledge = graph.createGraph({
+ hasLoops: false,
+ isSimple: true,
+ hasdirectedEdges:true,
+ title: "Knowledge graph"
 })
-        
+
+const docError = (data)=>{
+   docObject.valid = false
+   docObject.errors.push(data)
+}
+const docWarn = (data)=>{
+  docObject.warnings.push(data)
+}
   
-let allActions = annotations.action.extract(block)
+try{
+ blocks.map((block,blockIndex)=>{
+   
   
-allActions.map(itm=>{
-  d.data[newBlock.id]['annotations']['at']['valid'].push({index,...itm})
+if(block.trim()==''){
+  docWarn({"text":`Blank block at position ${blockIndex+1}`, blockIndex:blockIndex})
+}
+  
+let ann = extractAllAnnotations(block)
+  
+let newBlockData =  {
+     blockId : "", text: "",
+     source : { raw : [] , first: "" , second: "" },
+     dataType: "default",
+     value: {}, annotations :[],process: []
+   }
+let blockData
+if(ann.stats.declaration == 1){
+   let dec = ann.annotations.find(itm=>{return itm.type=='declaration'})
+   let newText = block.replace(dec.raw,'')
+   blockData = {
+     ... newBlockData,
+     blockId : dec.blockId,
+     dataType: dec.dataType,
+     text: newText,
+     source : { raw : [block] , first: block , second: "" },
+     annotations : ann.annotations,
+     process: ['initialized']
+   }
+   blockData.process.push('block id declared')
+   docObject.blocks.push(dec.blockId)
+   docObject.data[dec.blockId] = blockData
+}else if(ann.stats.append == 0) {
+// define a new block
+  let randomBlockName =  randomInteger(1000,9999)
+  blockData = {
+    ... newBlockData,
+     blockId : randomBlockName ,
+     text: block,
+     source : { raw : [block] , first: block , second: "" },
+     annotations : ann.annotations,
+     process: ['initialized']
+  }
+   blockData.process.push('random block id assigned')
+   docObject.blocks.push(randomBlockName)
+   docObject.data[randomBlockName] = blockData
+}
+try{
+ docObject.graphs.deps = graph.addVertex(docObject.graphs.deps,{id:blockData.blockId})
+}catch(error){ if(DEV){console.log(error) }}
+
+if(ann.stats.append == 1){
+ let act = ann.annotations.find(itm=>{return itm.type=='append'})
+ let blockFound = docObject.blocks.indexOf(act.blockId) > -1
+ if(blockFound){
+   blockData = docObject.data[act.blockId]
+   let newText = block.replace(act.raw,"")
+   blockData.text = blockData.text + "\n" + newText
+   blockData.source.first = blockData.source.first + "\n" + block
+   blockData.source.raw.push(block)
+   blockData.annotations = [... blockData.annotations, ...ann.annotations ]
+   blockData.process.push("text appened")
+ }else{
+  throw new Error(`the append annotation on block ${act.blockId} is not valid at this block does not exist.`)
+ }  
+}
+
+if(ann.stats.invocation > 0){
+ let allInv = ann.annotations.filter(itm=>{return itm.type =='invocation' })
+ allInv.map(inv=>{
+   if(inv.blockId == blockData.blockId){
+     throw new Error(`Invalid invocation : ${inv.raw}`)
+   }
+   try{
+     docObject.graphs.deps = graph.addVertex(docObject.graphs.deps,{id:inv.blockId})
+   }catch(error){ if(DEV){console.log(error)}}
+   docObject.graphs.deps = graph.addEdge(docObject.graphs.deps,{v1: blockData.blockId, v2: inv.blockId  })
+  docObject.data[blockData.blockId].process.push(`inv ann: ${inv.raw} , edge in dep graph`)
+ }) 
+}
+
+const allEdges = ann.annotations.filter(itm=>{return itm.type =='edge'})
+allEdges.map(ed=>{
+ let v1 = ed.v1 ? ed.v1 : blockData.blockId
+ try{
+  docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:v1})
+ }catch(er){ if(DEV){console.log(er)}}
+  try{
+  docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:ed.v2})
+ }catch(er){ if(DEV){ console.log(er)}}
+ docObject.graphs.knowledge = graph.addEdge(docObject.graphs.knowledge,{v1:v1, v2 : ed.v2, label: ed.label})
+ let newText = docObject['data'][blockData.blockId].text.replace(ed.raw,'')
+ docObject['data'][blockData.blockId].text = newText
+ docObject['data'][blockData.blockId].process.push(`edge-annotation: ${ed.text} processed`)
+}) 
+ })
+}catch(error){
+  if(DEV){console.log(error)}
+  docError({text:`${error.message}`, details:'Error occured during the first pass '})
+  return docObject
+}
+  
+try{
+let order = graph.TopologicalSort(docObject.graphs.deps)
+docObject.extra.blockOrder = order.vertexInOrder
+docObject.graphs.dfsTree = order.dfsTree
+docObject.graphs.tsTree = order.tsTree
+}catch(error){
+  if(DEV){console.log(error)}
+  docError({text:`${error.message}`, details:'Error occured during dependency check '})
+  return docObject
+}
+  
+try{
+docObject.extra.blockOrder.map(block=>{
+ const blockId = block.vertexId
+ if(!docObject.data[blockId]){
+	throw new Error(`invocation error : the block "${blockId}" does not exists in the doc`)
+ }
+ let blockContent = docObject.data[blockId]
+   
+ let invAnn = docObject.data[blockId].annotations.filter(itm=>{return itm['type']=='invocation'})
+ invAnn.map(inv=>{
+   let mainText =  blockContent.text
+   if(!docObject.data[inv.blockId]){
+     throw new Error(`invalid invocation ${inv.raw}, the block '${inv.blockId}' does not exists in the doc`)
+   }
+   let targetText = docObject.data[inv.blockId].text
+   mainText = mainText.replaceAll(inv.raw,targetText)
+   blockContent.text = mainText
+   blockContent.process.push(`inv ${inv.raw} replaced`)
+ })
+   
+let actAnn = docObject.data[blockId].annotations.filter(itm=>{return itm.type == 'action'})
+actAnn.map(act=>{
+  let mainText = blockContent.text
+  blockContent.text = mainText.replace(act.raw,'')
+  blockContent.process.push(`action ann: replaced ${act.raw}`)
 })
-  
-let lookForDataType = d.data[newBlock.id]['annotations']['at']['valid'].find(itm=>{return itm.action == 'data' } )
-if(!lookForDataType){
-  d.data[newBlock.id]['annotations']['at']['valid'].push({ action:"data", arguments:{ text:"default",d:"0"}})
+   
+let dataValue = dataType[blockContent.dataType](blockContent.text)
+blockContent.value = dataValue
+blockContent.process.push('datatype prorcessed')
+
+ })
+}catch(error){
+  if(DEV){console.log(error)}
+  docError({text:`${error.message}`, details:'Error occured during second pass '})
+  return docObject
 }
-        
-d.data[newBlock.id]['finalText'] =  d.data[newBlock.id]['text']
-    }
-  })
-  
-edgesToAdd.map(edge=>{g = graph.addEdge(g,edge)})
-  return {d,g,kg}
+  return docObject
 }
-  
-const generateProcessingOrder = (blockDep)=>{ return graph.TopologicalSort(blockDep) }
-  
-const secondPass = (docObj, kGraph, vertexOrder) => {
-  vertexOrder.map(v=>{
-    
-let validAnn = docObj['data'][v.vertexId]['annotations']['i']['valid']
-if(validAnn.length > 0){
-  let mainText = docObj['data'][v.vertexId]['text']
-  validAnn.map(annBlock=>{
-    let annText = docObj['data'][annBlock.blockId]['text']
-    mainText = mainText.replaceAll(`${annBlock.rawSource}`,annText)
-  }) 
-  docObj['data'][v.vertexId]['text'] = mainText
-}
-    
-let validAct = docObj['data'][v.vertexId]['annotations']['at']['valid']
-if(validAct.length > 0){
-  validAct.map(act=>{
-    
-if(actions[act.action]){
-  let actionEval = actions[act.action]['process'](act,{...docObj['data'][v.vertexId], id: v.vertexId })
-  if(actionEval.newBlockDataFields){
-    let newBlockData = { ... docObj['data'][v.vertexId], ... actionEval.newBlockDataFields  }
-    docObj['data'][v.vertexId] = newBlockData
-  }
-  if(actionEval.newKnowledgeGraphEdge){
-    kGraph = graph.addEdge(kGraph,actionEval.newKnowledgeGraphEdge)
-  }
-}
-  })
-  let mainText2 = docObj['data'][v.vertexId]['text']
-  let titleText = docObj['data'][v.vertexId]['title']
-  validAct.map(act=>{
-    
-if(act.rawSource){
-  mainText2 = mainText2.replaceAll(`${act.rawSource}`," ")
-  titleText = titleText.replaceAll(`${act.rawSource}`," ") 
-}
-  })
-  docObj['data'][v.vertexId]['text'] = mainText2
-  docObj['data'][v.vertexId]['title'] = titleText 
-}
-  })
-  return {blockContent: docObj, knowledgeGraph: kGraph }
-} 
-  const generateDocObject = (doc,options={})=>{
-    try{
-      const blocks = docToBlocks(doc,"\n\n")
-      let obj = firstPass(blocks)
-      let blockContent = obj.d
-      let blockDependencyGraph = obj.g
-      let knowledgeGraph = obj.kg
-      let order =  generateProcessingOrder(blockDependencyGraph)
-      let finalValues = secondPass(blockContent,knowledgeGraph,order.vertexInOrder)
-      blockContent = finalValues.blockContent
-      knowledgeGraph = finalValues.knowledgeGraph
-      return {blockContent, blockDependencyGraph, knowledgeGraph, ...order }
-    }catch(error){console.log(error)}
-  } 
-  
-const generateOutputDoc = async (doc,options={ type:"file-with-entry"})=>{
-  if(!options.type){throw new Error("No doc type specified")}
-  const docTypes = {
-    "file-with-entry": async ()=>{
-      if(!options.main){throw new Error("Specify the main block Id which contains the code")}
-      const Document = generateDocObject(doc,options) 
-      return Document['blockContent']['data'][options.main]['text']
-    },
-    "explorer": async ()=>{
-      const Document = generateDocObject(doc,options) 
-      const allGraphs = [ Document.blockDependencyGraph, Document.knowledgeGraph, Document.dfsTree, Document.tsTree ]
-      const graphHTML = await graph.generateGraphPreview(allGraphs,{format:'htmlParts'})
-      const sanitizeArrows = (text)=>{
-        let sText = text.replaceAll("<","&lt;").replaceAll(">","&gt;")
-        return sText
-      }
-      let explorerHTML = `<!DOCTYPE html>
-          <html lang="en">
-            <head>
-              <meta charset="UTF-8" />
-              <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>Document Explorer</title>
-              <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
-              ${graphHTML.head}
-            </head>
-            <body>
-              <style>.graph { width: 90%; height: 80vh; border: 1px solid #80808036; }</style>
-              <div class="container-lg">
-                <div class="row">
-                  <div class="col-lg-12">
-                    <h3>Document explorer</h3>
-                    <ul class="nav nav-pills mb-3" id="pills-tab" role="tablist">
-                      <li class="nav-item" role="presentation"> <button class="nav-link active" id="pills-source-tab" data-bs-toggle="pill" data-bs-target="#pills-source" type="button" role="tab" aria-controls="pills-source" aria-selected="true">Source</button></li>
-                      <li class="nav-item" role="presentation"><button class="nav-link" id="pills-graph-tab" data-bs-toggle="pill" data-bs-target="#pills-graph" type="button" role="tab" aria-controls="pills-graph" aria-selected="false">Graphs</button></li>
-                      <li class="nav-item" role="presentation"><button class="nav-link" id="pills-action-tab" data-bs-toggle="pill" data-bs-target="#pills-action" type="button" role="tab" aria-controls="pills-action" aria-selected="false">Actions</button></li>
-                    </ul>
-                    <div class="tab-content" id="pills-tabContent">
-                      <div class="tab-pane fade show active" id="pills-source" role="tabpanel" aria-labelledby="pills-source-tab" tabindex="0">
-                        <div class="row">
-                          <div class="col-lg-6"> <h4> Source </h4> <pre>${sanitizeArrows(doc)}</pre></div>
-                          <div class="col-lg-6"> <h4> Document object </h4> <pre>${sanitizeArrows(JSON.stringify(Document.blockContent,null,1))}</pre></div>
-                        </div>
-                      </div>
-                      <div class="tab-pane fade" id="pills-graph" role="tabpanel" aria-labelledby="pills-graph-tab" tabindex="0">
-                        ${graphHTML.body}
-                      </div>
-                      <div class="tab-pane fade" id="pills-action" role="tabpanel" aria-labelledby="pills-action-tab" tabindex="0">...</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </body>
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
-          </html> `
-      return explorerHTML
-    }
-  }
-  const docContent = await  docTypes[options.type]()
-  return docContent
-}
-module.exports = { generateDocObject, generateOutputDoc }
+module.exports.generateDocumentObject = generateDocumentObject

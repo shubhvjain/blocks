@@ -7,7 +7,7 @@ the first version of the program i.e v0.1.0 is released manually and later versi
 process:
 - all things happen in the `release` folder
 1. get (and store the) latest version of code dependencies 
-2. get the source file for the block program i.e `/source/block.txt`. use the current release version of the block program to generate the new block program 
+2. get the source file for the block program i.e `/source/block-alg.txt`. use the current release version of the block program to generate the new block program 
 3. generate new version number 
 4. generate the copyright text
 5. combine  copyright text, version number and code and store it as `block.js` in the release folder
@@ -16,7 +16,7 @@ Done!
 */
 
 const fs = require("fs/promises");
-const currentBlock = require("../source/block")
+const gDoc = require("../release/genDoc")
 
 const copyFileInRelease = async (opt)=>{
   await fs.copyFile(opt.path,`./release/${opt.fileName}`)
@@ -96,17 +96,16 @@ const main = async () => {
     if(validReleaseType.indexOf(releaseType) == -1 ){
       throw new Error(`Invalid release type. Valid values : ", ${validReleaseType.join(",")}`)
     }
-
     await updateDeps()
-    const blockFile = await getFile("./source/block.txt")
-    const codeFileContent = await  currentBlock.generateOutputDoc(blockFile,{main:"main-program",type:"file-with-entry"})
+    const blockFile = await getFile("./source/block-alg.txt")
+    const codeFileContent = await  gDoc.generateOutput(blockFile,{main:"main",type:"file-with-entry"})
     const newCopyRightAndVersion = await newHeader({releaseType })
     const fullText = `${newCopyRightAndVersion.header}${codeFileContent}`
     await saveFile('./release/block.js',fullText)
     await saveFile('./scripts/lastReleasedVersion.json',JSON.stringify(newCopyRightAndVersion.newVersion))
+    console.log("Released : ",newCopyRightAndVersion.newVersion)
   } catch (error) {
     console.log(error)
   }
 }
-
-main().then(data=>{console.log(data)}).catch(err=>{console.log(err)})
+main().then(data=>{console.log("Done.")}).catch(err=>{console.log(err)})
