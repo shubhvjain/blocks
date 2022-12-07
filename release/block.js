@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.9.1 . 
+the Block program. Version 0.9.2 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -109,14 +109,14 @@ const annotations = {
   },
   edge:{
       extract : (text)=>{
-      	  const reg = /\~\[([\w\s\-\,\.]+?)\]/gm
+      	  const reg = /\~\[([\w\s\-\,\.\*]+?)\]/gm
     	  const parts = text.match(reg)
     	  if (parts) {
       	     let anns = []
       	     parts.map(part => {
              let ann = {
              	 type: "edge", raw: part, text: "",
-		v1:"", v2:"", label:"",
+		v1:"*", v2:"*", label:"",
           	found: true, processed: false}
               const theString = part.replace("~[", "").replace("]", "").trim()
               ann.text = theString
@@ -130,7 +130,7 @@ const annotations = {
         	ann.v2 = removeSpace(part1[2])
                 ann.label = part1[1]
               }else{
-        	throw new Error(` Invalid edge annotation : ${part}. Format :  or  (node 1 will be the current block id)`)
+        	        throw new Error(`Invalid edge annotation : ${part}. Format :  or ~[*,label, node 2] or ~[node1,label,*]  (* for current block id)`)
               }
               anns.push(ann)
       	    })
@@ -390,14 +390,16 @@ if(ann.stats.invocation > 0){
 
 const allEdges = ann.annotations.filter(itm=>{return itm.type =='edge'})
 allEdges.map(ed=>{
- let v1 = ed.v1 ? ed.v1 : blockData.blockId
+ let v1 = ed.v1 != "*" ? ed.v1 : blockData.blockId
+ let v2 = ed.v2 != "*" ? ed.v2 : blockData.blockId
+ if(v1==v2){throw new Error(`Invalid edge annotation ${ed.raw} `)}
  try{
   docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:v1})
  }catch(er){ if(DEV){console.log(er)}}
   try{
-  docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:ed.v2})
+  docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:v2})
  }catch(er){ if(DEV){ console.log(er)}}
- docObject.graphs.knowledge = graph.addEdge(docObject.graphs.knowledge,{v1:v1, v2 : ed.v2, label: ed.label})
+ docObject.graphs.knowledge = graph.addEdge(docObject.graphs.knowledge,{v1:v1, v2 : v2, label: ed.label})
  let newText = docObject['data'][blockData.blockId].text.replace(ed.raw,'')
  docObject['data'][blockData.blockId].text = newText
  docObject['data'][blockData.blockId].process.push(`edge-annotation: ${ed.text} processed`)
