@@ -1,7 +1,14 @@
 const block = require("./block")
+const blockTest = require("../test/block")
 const graph = require("./graph")
+
 const genDocObjAndValidate = (doc,options)=>{
-  const Document = block.generateDocumentObject(doc,options) 
+  let Document 
+  if(options.DEV){
+    Document = blockTest.generateDocumentObject(doc,options) 
+  }else{
+    Document = block.generateDocumentObject(doc,options) 
+  }
   if(Document.valid){
     return Document
   }else{
@@ -132,22 +139,22 @@ const generateOutput = async (doc,options={ type:"file-with-entry"})=>{
                     }
                     return tab
                   }
-                	let allkeys = Object.keys(data.keyValueData)
+                	let allkeys = Object.keys(data.value.keyValueData)
                   let tab= \` \`
                   allkeys.map(ky=>{
-                  tab += \`<tr> <td> <b>\${ky}</b></td><td> \${objToTable(data.keyValueData[ky])} </td></tr>\`
+                  tab += \`<tr> <td> <b>\${ky}</b></td><td> \${objToTable(data.value.keyValueData[ky])} </td></tr>\`
                   })
                   return \`<p>\${data.title?data.title:""}</p><table class="table"> \${tab} </table>\`
                 },
                 'list': (data) => {
-                	let lt = data.listData
+                	let lt = data.value.listData
                   lt.shift()
                   let litag = ""
                   lt.map(l=>{ litag += \`<li>\${l.text}</li>\`  })
                   return \`<p>\${data.title?data.title:""}</p><ul>\${litag}</ul>\`
                 },
                 'resource-list': (data) => {
-                  let ress = data.resourceListData
+                  let ress = data.value.resourceListData
                   let rkeys = Object.keys(ress)
                   let cards = \` \`
                   rkeys.map(res=>{
@@ -162,7 +169,7 @@ const generateOutput = async (doc,options={ type:"file-with-entry"})=>{
                   return cards
                 },
                 'csv': (data) => {
-                	let cv = data.csvData
+                	let cv = data.value.csvData
                   let tab = \`\`
                   cv.map((c,index)=>{
                   	tab += "<tr>"

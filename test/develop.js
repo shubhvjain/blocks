@@ -8,20 +8,25 @@ const getFile = async (filePath) => {const data = await fs.readFile(filePath, { 
 const blockLatest = require("../release/block")
 const blockTest = require("../test/block")
 
+const genDoc = require("../release/genDoc")
 // this will generate the latest test version of block.js (inside the test folder) using the latest released version of the block program
 const generateTestBlockCodeUsingLatestRelease = async ()=>{
-  let fileContent = await getFile("source/block.txt")
-  const processedDoc  = await blockLatest.generateOutputDoc(fileContent,{type:"file-with-entry" ,main:"program-for-testing"})
-  await saveFile("test/block.js",processedDoc)
-  console.log("test/block.js updated!")
+  try {
+    let fileContent = await getFile("source/block-alg.txt")
+    const processedDoc  = await  genDoc.generateOutput(fileContent,{DEV:false,type:"file-with-entry" ,main:"main"})
+    await saveFile("test/block.js",processedDoc)
+    console.log("test/block.js updated!") 
+  } catch (error) { }
 }
 
 // this generates the explorer document for the lastest source file (i.e. the block.txt inside the source folder)
 // this will use the block program in the test folder 
 const generateExplorerDocForSourceUsingTest = async ()=>{
-  let fileContent = await getFile("source/block.txt")
-  let generatedDoc = await blockTest.generateOutputDoc(fileContent,{type:"explorer"})
-  await saveFile("test/explorer-block.html",generatedDoc)
+  try {
+    let fileContent = await getFile("source/block-alg.txt")
+    let generatedDoc = await genDoc.generateOutput(fileContent,{DEV:true,type:"explorer"})
+    await saveFile("test/explorer-block.html",generatedDoc) 
+  } catch (error) {}
 }
 
 const generateExplorerDocForDocUsingTest = async (docPath)=>{
@@ -35,10 +40,12 @@ const generateExplorerDocForDocUsingTest = async (docPath)=>{
 }
 
 const generateCodeFileFromSomeSource = async (docPath,fileName,fileType,blockName)=>{
-  let fileContent = await getFile(docPath)
-  const processedDoc  = await blockTest.generateOutputDoc(fileContent,{type:fileType, main:blockName})
-  await saveFile(`test/${fileName}`,processedDoc)
-  console.log(`test/${fileName} created!`)
+  try {
+    let fileContent = await getFile(docPath)
+    const processedDoc  = await genDoc.generateOutput(fileContent,{DEV:true,type:fileType, main:blockName})
+    await saveFile(`test/${fileName}`,processedDoc)
+    console.log(`test/${fileName} created!`) 
+  } catch (error) {}
 }
 
 const main = async ()=>{

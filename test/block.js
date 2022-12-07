@@ -1,3 +1,4 @@
+
 const graph = require("./graph")
 const generateDocumentObject = (document,options={})=>{
   const DEV = false 
@@ -168,25 +169,31 @@ const parseDefaultData = (blockText)=>{
     return data
 }
 const stringToObject = (text)=>{
-  // string is of the form "title: one = two , three = four, five = six"
-  let parts1 =  text.split(':')
-  let data = {}
-  let fields = parts1[1].split(",")
-  fields.map(field=>{
-    let v = field.split("=")
-    data[ v[0].trim() ] = v[1].trim()
+  // string is of the form "title: text,  one = two , three = four, five = six"
+  let parts1 =  text.split(' : ')
+  let obj = { key: parts1[0].trim() , value: {}  }
+  parts1.shift()
+  let remaingString = parts1.join(" : ")
+  let data = { text : remaingString  }
+  let fields = remaingString.split(",")
+  fields.map((field,index)=>{
+    let v = field.split(" = ")
+    if(v.length == 2){data[v[0].trim()] =  v[1].trim() }
+    else if(index == 0){ data['text'] = field}
   })
-  return { key: parts1[0].trim() , value : data  }
+  obj.value = data
+  return obj
 }
 const dataType = {
   "key-value":(blockText)=>{
     let initialData = parseDefaultData(blockText)
     let keyValueData = {}
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        const parts = l.split(":")
-        keyValueData[parts[0].trim()] = parts[1].trim()
+    initialData.linesWithoutTitle.map((line) => {
+      let l = line.trim()  
+      if (l.trim().length > 0  && l[0]=='-') {
+        l = l.replace("-","")
+        const parsedString = stringToObject(l)
+        keyValueData[parsedString.key] = parsedString.value
       }
     })
     initialData.keyValueData = keyValueData
@@ -197,9 +204,10 @@ const dataType = {
   "csv":(blockText) => {
     let initialData = parseDefaultData(blockText)
     let csvData = []
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
+    initialData.linesWithoutTitle.map((line) => {
+      let l = line.trim()  
+      if (l.trim().length > 0  && l[0]=='-') {
+        l = l.replace("-","")
         const parts = l.split(",")
         csvData.push(parts)
       }
@@ -211,11 +219,12 @@ const dataType = {
   },
   "list":(blockText)=>{
     let initialData = parseDefaultData(blockText)
-    let listData = ['index item added by default']
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
-        listData.push({text:l})
+    let listData = ["index item added by default"]
+    initialData.linesWithoutTitle.map((line) => {
+      let l = line.trim()  
+      if (l.trim().length > 0  && l[0]=='-') {
+        l = l.replace("-","")
+        listData.push({ text: l })
       }
     })
     initialData.listData = listData
@@ -223,18 +232,13 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData
   },
-  "resource":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
-    initialData.type = "resource"
-    delete initialData.linesWithoutTitle
-    return initialData
-  },
   "resource-list":(blockText)=>{
     let initialData = parseDefaultData(blockText)
     let resourceData = {}
-    initialData.linesWithoutTitle.map(line=>{
-      let l = line.replace("-","").trim()
-      if(l.trim().length>0){
+    initialData.linesWithoutTitle.map((line) => {
+      let l = line.trim()  
+      if (l.trim().length > 0  && l[0]=='-') {
+        l = l.replace("-","")
         let parsedObj = stringToObject(l)
         resourceData[parsedObj.key] = parsedObj.value
       }
@@ -275,7 +279,7 @@ docObject.graphs.deps = graph.createGraph({
 docObject.graphs.knowledge = graph.createGraph({
  hasLoops: false,
  isSimple: true,
- hasdirectedEdges:true,
+ hasDirectedEdges:true,
  title: "Knowledge graph"
 })
 
@@ -306,6 +310,7 @@ let newBlockData =  {
 let blockData
 if(ann.stats.declaration == 1){
    let dec = ann.annotations.find(itm=>{return itm.type=='declaration'})
+   if(docObject.data[dec.blockId]){throw new Error(`Redeclaration of ${dec.blockId} is invalid. Use append instead`)}
    let newText = block.replace(dec.raw,'')
    blockData = {
      ... newBlockData,
@@ -385,7 +390,7 @@ allEdges.map(ed=>{
  })
 }catch(error){
   if(DEV){console.log(error)}
-  docError({text:`${error.message}`, details:'Error occured during the first pass '})
+  docError({text:`${error.message}`, details:'Error occurred during the first pass '})
   return docObject
 }
   
@@ -429,12 +434,12 @@ actAnn.map(act=>{
    
 let dataValue = dataType[blockContent.dataType](blockContent.text)
 blockContent.value = dataValue
-blockContent.process.push('datatype prorcessed')
+blockContent.process.push('datatype processed')
 
  })
 }catch(error){
   if(DEV){console.log(error)}
-  docError({text:`${error.message}`, details:'Error occured during second pass '})
+  docError({text:`${error.message}`, details:'Error occurred during second pass '})
   return docObject
 }
   return docObject
