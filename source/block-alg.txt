@@ -36,10 +36,7 @@ Annotations :
      > [block 2]
    .[block 2] this is block 2
 4. graph edges
-   .[block 1] ~ [-(label)->node2]
-   .[all graph edges]
-      ~ [node 1 -(label 1)-> node2] 
-      ~ [node 2 -(label 2)-> node3]
+   .[block 1] ~ [node1, label, node2] (use * instead of the node name to consider the current vertex)
 5. action annotation
    / [action-name: argument list]
 
@@ -247,14 +244,14 @@ const annotations = {
   },
   edge:{
       extract : (text)=>{
-      	  const reg = /\~\[([\w\s\-\,\.]+?)\]/gm
+      	  const reg = /\~\[([\w\s\-\,\.\*]+?)\]/gm
     	  const parts = text.match(reg)
     	  if (parts) {
       	     let anns = []
       	     parts.map(part => {
              let ann = {
              	 type: "edge", raw: part, text: "",
-		v1:"", v2:"", label:"",
+		v1:"*", v2:"*", label:"",
           	found: true, processed: false}
               const theString = part.replace("~[", "").replace("]", "").trim()
               ann.text = theString
@@ -268,7 +265,7 @@ const annotations = {
         	ann.v2 = removeSpace(part1[2])
                 ann.label = part1[1]
               }else{
-        	throw new Error(` Invalid edge annotation : ${part}. Format : ~[node1, label, node 2] or ~[label, node 2] (node 1 will be the current block id)`)
+        	        throw new Error(`Invalid edge annotation : ${part}. Format : ~[node1, label, node 2] or ~[*,label, node 2] or ~[node1,label,*]  (* for current block id)`)
               }
               anns.push(ann)
       	    })
@@ -442,14 +439,16 @@ next, edge annotations have to be processed
 +[step 3-3]
 const allEdges = ann.annotations.filter(itm=>{return itm.type =='edge'})
 allEdges.map(ed=>{
- let v1 = ed.v1 ? ed.v1 : blockData.blockId
+ let v1 = ed.v1 != "*" ? ed.v1 : blockData.blockId
+ let v2 = ed.v2 != "*" ? ed.v2 : blockData.blockId
+ if(v1==v2){throw new Error(`Invalid edge annotation ${ed.raw} `)}
  try{
   docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:v1})
  }catch(er){ if(DEV){console.log(er)}}
   try{
-  docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:ed.v2})
+  docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:v2})
  }catch(er){ if(DEV){ console.log(er)}}
- docObject.graphs.knowledge = graph.addEdge(docObject.graphs.knowledge,{v1:v1, v2 : ed.v2, label: ed.label})
+ docObject.graphs.knowledge = graph.addEdge(docObject.graphs.knowledge,{v1:v1, v2 : v2, label: ed.label})
  let newText = docObject['data'][blockData.blockId].text.replace(ed.raw,'')
  docObject['data'][blockData.blockId].text = newText
  docObject['data'][blockData.blockId].process.push(`edge-annotation: ${ed.text} processed`)
