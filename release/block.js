@@ -1,5 +1,5 @@
 /*** 
-the Block program. Version 0.9.2 . 
+the Block program. Version 0.9.3 . 
 Full source code is available at https://github.com/shubhvjain/blocks
 Copyright (C) 2022  Shubh
 This program is free software: you can redistribute it and/or modify
@@ -130,7 +130,7 @@ const annotations = {
         	ann.v2 = removeSpace(part1[2])
                 ann.label = part1[1]
               }else{
-        	        throw new Error(`Invalid edge annotation : ${part}. Format :  or ~[*,label, node 2] or ~[node1,label,*]  (* for current block id)`)
+        	        throw new Error(`Invalid edge annotation : ${part}. Format :  or  or   (* for current block id)`)
               }
               anns.push(ann)
       	    })
@@ -173,7 +173,8 @@ const extractAllAnnotations = (text)=>{
   return {stats : annCount, annotations: annotationList}
 }
 
-const parseDefaultData = (blockText)=>{
+const dataTypeUtils  = {
+  parseDefaultData : (blockText)=>{
     let data = {title: blockText , noLines: 0, linesWithoutTitle:[] }
     let lines = blockText.split("\n")
     const noOfLines = lines.length
@@ -182,9 +183,9 @@ const parseDefaultData = (blockText)=>{
     lines.shift()
     data.linesWithoutTitle = lines
     return data
-}
-const stringToObject = (text)=>{
-  // string is of the form "title: text,  one = two , three = four, five = six"
+  },
+ stringToObject : (text)=>{
+    // string is of the form "title: text,  one = two , three = four, five = six"
   let parts1 =  text.split(' : ')
   let obj = { key: parts1[0].trim() , value: {}  }
   parts1.shift()
@@ -198,16 +199,17 @@ const stringToObject = (text)=>{
   })
   obj.value = data
   return obj
+ }
 }
 const dataType = {
-  "key-value":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
+  "key-value":(block,utils)=>{
+    let initialData = utils.parseDefaultData(block.text)
     let keyValueData = {}
     initialData.linesWithoutTitle.map((line) => {
       let l = line.trim()  
       if (l.trim().length > 0  && l[0]=='-') {
         l = l.replace("-","")
-        const parsedString = stringToObject(l)
+        const parsedString = utils.stringToObject(l)
         keyValueData[parsedString.key] = parsedString.value
       }
     })
@@ -216,8 +218,8 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData    
   },
-  "csv":(blockText) => {
-    let initialData = parseDefaultData(blockText)
+  "csv":(block,utils) => {
+    let initialData = utils.parseDefaultData(block.text)
     let csvData = []
     initialData.linesWithoutTitle.map((line) => {
       let l = line.trim()  
@@ -232,8 +234,8 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData
   },
-  "list":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
+  "list":(block,utils)=>{
+    let initialData = utils.parseDefaultData(block.text)
     let listData = ["index item added by default"]
     initialData.linesWithoutTitle.map((line) => {
       let l = line.trim()  
@@ -247,14 +249,14 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData
   },
-  "resource-list":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
+  "resource-list":(block,utils)=>{
+    let initialData = utils.parseDefaultData(block.text)
     let resourceData = {}
     initialData.linesWithoutTitle.map((line) => {
       let l = line.trim()  
       if (l.trim().length > 0  && l[0]=='-') {
         l = l.replace("-","")
-        let parsedObj = stringToObject(l)
+        let parsedObj = utils.stringToObject(l)
         resourceData[parsedObj.key] = parsedObj.value
       }
     })
@@ -263,8 +265,8 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData
   },
-  "default":(blockText)=>{
-    let data = parseDefaultData(blockText)
+  "default":(block,utils)=>{
+    let data = utils.parseDefaultData(block.text)
     data.type = "default"
     delete data.linesWithoutTitle
     return data
@@ -449,7 +451,9 @@ actAnn.map(act=>{
   blockContent.process.push(`action ann: replaced ${act.raw}`)
 })
    
-let dataValue = dataType[blockContent.dataType](blockContent.text)
+let dt = {...dataType}
+let dtu = {...dataTypeUtils}
+let dataValue = dt[blockContent.dataType](blockContent,dtu)
 blockContent.value = dataValue
 blockContent.process.push('datatype processed')
 
