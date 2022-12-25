@@ -94,14 +94,14 @@ const annotations = {
   },
   edge:{
       extract : (text)=>{
-      	  const reg = /\~\[([\w\s\-\,\.]+?)\]/gm
+      	  const reg = /\~\[([\w\s\-\,\.\*]+?)\]/gm
     	  const parts = text.match(reg)
     	  if (parts) {
       	     let anns = []
       	     parts.map(part => {
              let ann = {
              	 type: "edge", raw: part, text: "",
-		v1:"", v2:"", label:"",
+		v1:"*", v2:"*", label:"",
           	found: true, processed: false}
               const theString = part.replace("~[", "").replace("]", "").trim()
               ann.text = theString
@@ -115,7 +115,7 @@ const annotations = {
         	ann.v2 = removeSpace(part1[2])
                 ann.label = part1[1]
               }else{
-        	throw new Error(` Invalid edge annotation : ${part}. Format :  or  (node 1 will be the current block id)`)
+        	        throw new Error(`Invalid edge annotation : ${part}. Format :  or  or   (* for current block id)`)
               }
               anns.push(ann)
       	    })
@@ -158,7 +158,8 @@ const extractAllAnnotations = (text)=>{
   return {stats : annCount, annotations: annotationList}
 }
 
-const parseDefaultData = (blockText)=>{
+const dataTypeUtils  = {
+  parseDefaultData : (blockText)=>{
     let data = {title: blockText , noLines: 0, linesWithoutTitle:[] }
     let lines = blockText.split("\n")
     const noOfLines = lines.length
@@ -167,9 +168,9 @@ const parseDefaultData = (blockText)=>{
     lines.shift()
     data.linesWithoutTitle = lines
     return data
-}
-const stringToObject = (text)=>{
-  // string is of the form "title: text,  one = two , three = four, five = six"
+  },
+ stringToObject : (text)=>{
+    // string is of the form "title: text,  one = two , three = four, five = six"
   let parts1 =  text.split(' : ')
   let obj = { key: parts1[0].trim() , value: {}  }
   parts1.shift()
@@ -183,16 +184,17 @@ const stringToObject = (text)=>{
   })
   obj.value = data
   return obj
+ }
 }
 const dataType = {
-  "key-value":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
+  "key-value":(block,utils)=>{
+    let initialData = utils.parseDefaultData(block.text)
     let keyValueData = {}
     initialData.linesWithoutTitle.map((line) => {
       let l = line.trim()  
       if (l.trim().length > 0  && l[0]=='-') {
         l = l.replace("-","")
-        const parsedString = stringToObject(l)
+        const parsedString = utils.stringToObject(l)
         keyValueData[parsedString.key] = parsedString.value
       }
     })
@@ -201,8 +203,8 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData    
   },
-  "csv":(blockText) => {
-    let initialData = parseDefaultData(blockText)
+  "csv":(block,utils) => {
+    let initialData = utils.parseDefaultData(block.text)
     let csvData = []
     initialData.linesWithoutTitle.map((line) => {
       let l = line.trim()  
@@ -217,8 +219,8 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData
   },
-  "list":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
+  "list":(block,utils)=>{
+    let initialData = utils.parseDefaultData(block.text)
     let listData = ["index item added by default"]
     initialData.linesWithoutTitle.map((line) => {
       let l = line.trim()  
@@ -232,14 +234,14 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData
   },
-  "resource-list":(blockText)=>{
-    let initialData = parseDefaultData(blockText)
+  "resource-list":(block,utils)=>{
+    let initialData = utils.parseDefaultData(block.text)
     let resourceData = {}
     initialData.linesWithoutTitle.map((line) => {
       let l = line.trim()  
       if (l.trim().length > 0  && l[0]=='-') {
         l = l.replace("-","")
-        let parsedObj = stringToObject(l)
+        let parsedObj = utils.stringToObject(l)
         resourceData[parsedObj.key] = parsedObj.value
       }
     })
@@ -248,8 +250,8 @@ const dataType = {
     delete initialData.linesWithoutTitle
     return initialData
   },
-  "default":(blockText)=>{
-    let data = parseDefaultData(blockText)
+  "default":(block,utils)=>{
+    let data = utils.parseDefaultData(block.text)
     data.type = "default"
     delete data.linesWithoutTitle
     return data
@@ -375,14 +377,16 @@ if(ann.stats.invocation > 0){
 
 const allEdges = ann.annotations.filter(itm=>{return itm.type =='edge'})
 allEdges.map(ed=>{
- let v1 = ed.v1 ? ed.v1 : blockData.blockId
+ let v1 = ed.v1 != "*" ? ed.v1 : blockData.blockId
+ let v2 = ed.v2 != "*" ? ed.v2 : blockData.blockId
+ if(v1==v2){throw new Error(`Invalid edge annotation ${ed.raw} `)}
  try{
   docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:v1})
  }catch(er){ if(DEV){console.log(er)}}
   try{
-  docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:ed.v2})
+  docObject.graphs.knowledge = graph.addVertex(docObject.graphs.knowledge,{id:v2})
  }catch(er){ if(DEV){ console.log(er)}}
- docObject.graphs.knowledge = graph.addEdge(docObject.graphs.knowledge,{v1:v1, v2 : ed.v2, label: ed.label})
+ docObject.graphs.knowledge = graph.addEdge(docObject.graphs.knowledge,{v1:v1, v2 : v2, label: ed.label})
  let newText = docObject['data'][blockData.blockId].text.replace(ed.raw,'')
  docObject['data'][blockData.blockId].text = newText
  docObject['data'][blockData.blockId].process.push(`edge-annotation: ${ed.text} processed`)
@@ -432,7 +436,9 @@ actAnn.map(act=>{
   blockContent.process.push(`action ann: replaced ${act.raw}`)
 })
    
-let dataValue = dataType[blockContent.dataType](blockContent.text)
+let dt = {...dataType}
+let dtu = {...dataTypeUtils}
+let dataValue = dt[blockContent.dataType](blockContent,dtu)
 blockContent.value = dataValue
 blockContent.process.push('datatype processed')
 
